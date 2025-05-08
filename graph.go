@@ -48,6 +48,7 @@ type edge struct {
 
 type resultSet struct {
 	Principal *vertex
+	All       bool
 
 	Edges    []*edge
 	Vertices []*vertex

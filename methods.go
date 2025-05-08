@@ -193,3 +193,61 @@ func (g *Graph) ensureEdgeClass(name string) class {
 	g.edgeClasses[classID] = name
 	return classID
 }
+
+func (g *Graph) EdgeSourceLabel(e *edge) string {
+	return g.vertices[e.source.id].label
+}
+
+func (g *Graph) EdgeDestinationLabel(e *edge) string {
+	return g.vertices[e.destination.id].label
+}
+
+func (g *Graph) GetVertexDependencies(label string, all bool) resultSet {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	var principal *vertex
+	for _, v := range g.vertices {
+		if v.label == label {
+			principal = v
+			break
+		}
+	}
+	if principal == nil {
+		return resultSet{} // Vértice não encontrado
+	}
+
+	visited := make(map[id]bool)
+	var vertices []*vertex
+	var edges []*edge
+
+	var dfs func(v *vertex)
+	dfs = func(v *vertex) {
+		for _, neighbor := range v.neighbors {
+			if !visited[neighbor.id] {
+				visited[neighbor.id] = true
+				vertices = append(vertices, neighbor)
+
+				if edgeMap, ok := g.edges[v.id]; ok {
+					if e, ok := edgeMap[neighbor.id]; ok {
+						edges = append(edges, e)
+					}
+				}
+
+				if all {
+					dfs(neighbor)
+				}
+			}
+		}
+	}
+
+	visited[principal.id] = true
+	dfs(principal)
+
+	return resultSet{
+		Principal: principal,
+		All:       all,
+		Vertices:  vertices,
+		Edges:     edges,
+	}
+}
