@@ -251,3 +251,50 @@ func (g *Graph) GetVertexDependencies(label string, all bool) resultSet {
 		Edges:     edges,
 	}
 }
+
+func (g *Graph) GetVertexDependants(label string, all bool) resultSet {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	var principal *vertex
+	for _, v := range g.vertices {
+		if v.label == label {
+			principal = v
+			break
+		}
+	}
+	if principal == nil {
+		return resultSet{}
+	}
+
+	visited := make(map[id]bool)
+	var vertices []*vertex
+	var edges []*edge
+
+	var dfs func(v *vertex)
+	dfs = func(v *vertex) {
+		for srcID, edgeMap := range g.edges {
+			if e, ok := edgeMap[v.id]; ok {
+				src := g.vertices[srcID]
+				if !visited[src.id] {
+					visited[src.id] = true
+					vertices = append(vertices, src)
+					edges = append(edges, e)
+
+					if all {
+						dfs(src)
+					}
+				}
+			}
+		}
+	}
+
+	visited[principal.id] = true
+	dfs(principal)
+
+	return resultSet{
+		Principal: principal,
+		Vertices:  vertices,
+		Edges:     edges,
+	}
+}

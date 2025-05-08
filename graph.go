@@ -81,3 +81,84 @@ func NewGraph() *Graph {
 		vertexClasses: make(map[class]string),
 	}
 }
+
+func (g *Graph) Path(label, destination string) resultSet {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	var start, end *vertex
+	for _, v := range g.vertices {
+		if v.label == label {
+			start = v
+		}
+		if v.label == destination {
+			end = v
+		}
+	}
+
+	if start == nil || end == nil {
+		return resultSet{}
+	}
+
+	var allVertices []*vertex
+	var allEdges []*edge
+	visited := make(map[id]bool)
+	pathStack := []*vertex{}
+
+	var dfs func(current *vertex)
+	dfs = func(current *vertex) {
+		visited[current.id] = true
+		pathStack = append(pathStack, current)
+
+		if current == end {
+			// Registrar caminho atual
+			for _, v := range pathStack {
+				if !containsVertex(allVertices, v) {
+					allVertices = append(allVertices, v)
+				}
+			}
+			for i := 0; i < len(pathStack)-1; i++ {
+				edgesFrom := g.edges[pathStack[i].id]
+				if edge, ok := edgesFrom[pathStack[i+1].id]; ok && !containsEdge(allEdges, edge) {
+					allEdges = append(allEdges, edge)
+				}
+			}
+		} else {
+			for _, neighbor := range current.neighbors {
+				if !visited[neighbor.id] {
+					dfs(neighbor)
+				}
+			}
+		}
+
+		// Backtrack
+		visited[current.id] = false
+		pathStack = pathStack[:len(pathStack)-1]
+	}
+
+	dfs(start)
+
+	return resultSet{
+		Principal: start,
+		Vertices:  allVertices,
+		Edges:     allEdges,
+	}
+}
+
+func containsVertex(list []*vertex, v *vertex) bool {
+	for _, item := range list {
+		if item.id == v.id {
+			return true
+		}
+	}
+	return false
+}
+
+func containsEdge(list []*edge, e *edge) bool {
+	for _, item := range list {
+		if item.id == e.id {
+			return true
+		}
+	}
+	return false
+}
