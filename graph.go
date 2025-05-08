@@ -53,6 +53,13 @@ type edge struct {
 	destination *vertex
 }
 
+type resultSet struct {
+	principal *vertex
+
+	edges    []*edge
+	vertices []*vertex
+}
+
 func (e edge) Label() string {
 	return e.label
 }
@@ -81,139 +88,14 @@ func NewGraph() *Graph {
 	}
 }
 
-// NewVertex cria e registra um novo vértice com o label e classe fornecidos.
-// Retorna erro se o label ou classe forem inválidos.
-func (g *Graph) NewVertex(label, cla string) (*vertex, error) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	if !validLabel.MatchString(label) {
-		return nil, ErrInvalidLabel
+func (g *Graph) Unhealth() resultSet {
+	set := resultSet{
+		vertices: []*vertex{},
 	}
-
-	if !validClassName.MatchString(cla) {
-		return nil, ErrInvalidClassName
-	}
-
-	return g.newVertex(label, cla), nil
-}
-
-// NewEdge cria e registra uma nova aresta entre dois vértices existentes.
-// Garante que não haja múltiplas arestas entre o mesmo par de vértices.
-func (g *Graph) NewEdge(label string, cla string, source, destination *vertex) (*edge, error) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	if source == nil || destination == nil {
-		return nil, ErrNilVertices
-	}
-
-	if !validLabel.MatchString(label) {
-		return nil, ErrInvalidLabel
-	}
-
-	if !validClassName.MatchString(cla) {
-		return nil, ErrInvalidClassName
-	}
-
-	return g.newEdge(label, cla, source, destination), nil
-}
-
-func (g *Graph) GetVertexByLabel(label string) *vertex {
-	for _, v := range g.vertices {
-		if v.label == label {
-			return v
-		}
-	}
-	return nil
-}
-
-func (g *Graph) newVertex(label, cla string) *vertex {
-	class := g.ensureVertexClass(cla)
 
 	for _, v := range g.vertices {
-		if v.label == label {
-			return v
-		}
+		set.vertices = append(set.vertices, v)
 	}
 
-	nid := id(g.newID())
-
-	v := &vertex{
-		id:        nid,
-		class:     class,
-		label:     label,
-		health:    false,
-		neighbors: []*vertex{},
-	}
-
-	g.vertices[v.id] = v
-	return v
-}
-
-func (g *Graph) newEdge(label string, cla string, source, destination *vertex) *edge {
-
-	eclass := g.ensureEdgeClass(cla)
-
-	// prevent edge-multiplicity
-	if destMap, ok := g.edges[source.id]; ok {
-		if e, ok := destMap[destination.id]; ok {
-			return e
-		}
-	}
-
-	var e *edge
-
-	{
-		eid := id(g.newID())
-
-		source.neighbors = append(source.neighbors, destination)
-
-		e = &edge{
-			id:    eid,
-			class: eclass,
-			label: label,
-
-			source:      source,
-			destination: destination,
-		}
-
-		if _, ok := g.edges[source.id]; !ok {
-			g.edges[source.id] = map[id]*edge{destination.id: e}
-			return e
-		}
-
-		g.edges[source.id][destination.id] = e
-	}
-
-	return e
-}
-
-func (g *Graph) newID() uint32 {
-	g.lastID++
-	return g.lastID
-}
-
-func (g *Graph) ensureVertexClass(name string) class {
-	for classID, cla := range g.vertexClasses {
-		if cla == name {
-			return classID
-		}
-	}
-
-	classID := class(g.newID())
-	g.vertexClasses[classID] = name
-	return classID
-}
-
-func (g *Graph) ensureEdgeClass(name string) class {
-	for classID, cla := range g.edgeClasses {
-		if cla == name {
-			return classID
-		}
-	}
-
-	classID := class(g.newID())
-	g.edgeClasses[classID] = name
-	return classID
+	return set
 }
