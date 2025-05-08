@@ -41,12 +41,20 @@ type vertex struct {
 	neighbors []*vertex
 }
 
+func (v vertex) Label() string {
+	return v.label
+}
+
 type edge struct {
 	id
 	class
 	label       string
 	source      *vertex
 	destination *vertex
+}
+
+func (e edge) Label() string {
+	return e.label
 }
 
 // Graph representa a estrutura principal contendo vértices e arestas.
@@ -109,6 +117,15 @@ func (g *Graph) NewEdge(label string, cla string, source, destination *vertex) (
 	}
 
 	return g.newEdge(label, cla, source, destination), nil
+}
+
+func (g *Graph) GetVertexByLabel(label string) *vertex {
+	for _, v := range g.vertices {
+		if v.label == label {
+			return v
+		}
+	}
+	return nil
 }
 
 func (g *Graph) newVertex(label, cla string) *vertex {
