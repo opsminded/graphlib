@@ -25,20 +25,13 @@ var (
 	ErrInvalidClassName = errors.New("invalid class name")
 )
 
-// Iterator define uma interface opcional para percorrer vértices do grafo.
-type Iterator interface {
-	HasNext() bool
-	Next() *vertex
-	Iterate(func(v *vertex) error) error
-	Reset()
-}
-
 type vertex struct {
 	id
 	class
 	label     string
 	health    bool
 	neighbors []*vertex
+	lastCheck int64 // unix timestamp of last health check
 }
 
 func (v vertex) Label() string {
@@ -54,10 +47,10 @@ type edge struct {
 }
 
 type resultSet struct {
-	principal *vertex
+	Principal *vertex
 
-	edges    []*edge
-	vertices []*vertex
+	Edges    []*edge
+	Vertices []*vertex
 }
 
 func (e edge) Label() string {
@@ -86,16 +79,4 @@ func NewGraph() *Graph {
 		edgeClasses:   make(map[class]string),
 		vertexClasses: make(map[class]string),
 	}
-}
-
-func (g *Graph) Unhealth() resultSet {
-	set := resultSet{
-		vertices: []*vertex{},
-	}
-
-	for _, v := range g.vertices {
-		set.vertices = append(set.vertices, v)
-	}
-
-	return set
 }

@@ -51,12 +51,57 @@ func (g *Graph) GetVertexClass(v *vertex) string {
 	return g.vertexClasses[v.class]
 }
 
+func (g *Graph) GetEdgeClass(e *edge) string {
+	return g.edgeClasses[e.class]
+}
+
 func (g *Graph) VertexLen() int {
 	return len(g.vertices)
 }
 
 func (g *Graph) EdgeLen() int {
 	return len(g.edges)
+}
+
+func (g *Graph) UnhealthVertices() []*vertex {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	var list []*vertex
+	for _, v := range g.vertices {
+		if !v.health {
+			list = append(list, v)
+		}
+	}
+
+	return list
+}
+
+func (g *Graph) Neighbors(v *vertex) resultSet {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	rs := resultSet{
+		Principal: v,
+	}
+
+	// Dependências: arestas saindo de v
+	if outgoing, ok := g.edges[v.id]; ok {
+		for _, e := range outgoing {
+			rs.Edges = append(rs.Edges, e)
+			rs.Vertices = append(rs.Vertices, e.destination)
+		}
+	}
+
+	// Dependentes: arestas chegando em v
+	for _, dests := range g.edges {
+		if e, ok := dests[v.id]; ok {
+			rs.Edges = append(rs.Edges, e)
+			rs.Vertices = append(rs.Vertices, e.source)
+		}
+	}
+
+	return rs
 }
 
 func (g *Graph) newVertex(label, cla string) *vertex {
