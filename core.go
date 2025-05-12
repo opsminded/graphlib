@@ -142,6 +142,10 @@ func (v *vertex) Health() bool {
 	return v.health
 }
 
+func (v *vertex) SetHealth(h bool) {
+	v.health = h
+}
+
 type graph struct {
 	edges    edgesMap
 	vertices vertexList

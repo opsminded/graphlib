@@ -40,6 +40,11 @@ func TestCore_BasicsOfVertex(t *testing.T) {
 	if a.Health() != true {
 		t.Fatalf("Expected health to be true, but got false")
 	}
+
+	a.SetHealth(false)
+	if a.Health() != false {
+		t.Fatalf("Expected health to be false, but got true")
+	}
 }
 
 func TestCore_VertexListLength(t *testing.T) {
