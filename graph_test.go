@@ -13,13 +13,13 @@ func TestGraph_Basics(t *testing.T) {
 
 	g.NewEdge("A-B", "A", "B")
 
-	if g.GetVertexHealth("A") != true {
-		t.Errorf("Expected vertex A to be healthy, got %v", g.GetVertexHealth("A"))
+	if g.GetVertexByLabel("A").Health != true {
+		t.Errorf("Expected vertex A to be healthy, got %v", g.GetVertexByLabel("A").Health)
 	}
 
 	g.SetVertexHealth("A", false)
-	if g.GetVertexHealth("A") != false {
-		t.Errorf("Expected vertex A to be unhealthy, got %v", g.GetVertexHealth("A"))
+	if g.GetVertexByLabel("A").Health != false {
+		t.Errorf("Expected vertex A to be unhealthy, got %v", g.GetVertexByLabel("A").Health)
 	}
 
 }

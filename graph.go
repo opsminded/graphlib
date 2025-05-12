@@ -7,7 +7,8 @@ import (
 )
 
 type Vertex struct {
-	Label string
+	Label  string
+	Health bool
 }
 
 type Edge struct {
@@ -67,18 +68,9 @@ func (g *Graph) GetVertexByLabel(label string) Vertex {
 	}
 
 	return Vertex{
-		Label: v.label,
+		Label:  v.label,
+		Health: v.health,
 	}
-}
-
-func (g *Graph) GetVertexHealth(label string) bool {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
-	v, ok := g.graph.vertices.find(label)
-	if !ok {
-		panic("vertex not found")
-	}
-	return v.health
 }
 
 func (g *Graph) SetVertexHealth(label string, health bool) {
@@ -101,9 +93,15 @@ func (g *Graph) GetEdgeByLabel(label string) Edge {
 		for _, edge := range e {
 			if edge.label == label {
 				return Edge{
-					Label:       edge.label,
-					Source:      Vertex{Label: edge.source.label},
-					Destination: Vertex{Label: edge.destination.label},
+					Label: edge.label,
+					Source: Vertex{
+						Label:  edge.source.label,
+						Health: edge.source.health,
+					},
+					Destination: Vertex{
+						Label:  edge.destination.label,
+						Health: edge.destination.health,
+					},
 				}
 			}
 		}
@@ -136,12 +134,18 @@ func (g *Graph) Neighbors(label string) Subgraph {
 		panic("vertex not found")
 	}
 
-	source := Vertex{Label: vSource.label}
+	source := Vertex{
+		Label:  vSource.label,
+		Health: vSource.health,
+	}
 
 	for _, dep := range vSource.dependencies {
 		vDestination, _ := g.graph.vertices.find(dep.label)
 		vEdge, _ := g.graph.edges.find(vSource, vDestination)
-		destination := Vertex{Label: vDestination.label}
+		destination := Vertex{
+			Label:  vDestination.label,
+			Health: vDestination.health,
+		}
 		vertices = append(vertices, destination)
 		new := Edge{
 			Label:       vEdge.label,
@@ -154,7 +158,10 @@ func (g *Graph) Neighbors(label string) Subgraph {
 	for _, dep := range vSource.dependents {
 		vDestination, _ := g.graph.vertices.find(dep.label)
 		vEdge, _ := g.graph.edges.find(vDestination, vSource)
-		destination := Vertex{Label: vDestination.label}
+		destination := Vertex{
+			Label:  vDestination.label,
+			Health: vDestination.health,
+		}
 		vertices = append(vertices, destination)
 		new := Edge{
 			Label:       vEdge.label,
@@ -165,7 +172,10 @@ func (g *Graph) Neighbors(label string) Subgraph {
 	}
 
 	// Sempre incluir o próprio vértice
-	vertices = append(vertices, Vertex{Label: vSource.label})
+	vertices = append(vertices, Vertex{
+		Label:  vSource.label,
+		Health: vSource.health,
+	})
 
 	return Subgraph{
 		Vertices: vertices,
@@ -185,11 +195,17 @@ func (g *Graph) GetVertexDependents(label string, all bool) Subgraph {
 		panic("vertex not found")
 	}
 
-	source := Vertex{Label: v.label}
+	source := Vertex{
+		Label:  v.label,
+		Health: v.health,
+	}
 
 	// Para dependentes diretos
 	for _, dep := range v.dependents {
-		destination := Vertex{Label: dep.label}
+		destination := Vertex{
+			Label:  dep.label,
+			Health: dep.health,
+		}
 		vertices[destination.Label] = destination
 		re, _ := g.graph.edges.find(dep, v)
 		new := Edge{
@@ -205,13 +221,19 @@ func (g *Graph) GetVertexDependents(label string, all bool) Subgraph {
 		var dfs func(v *vertex)
 		dfs = func(v *vertex) {
 			for _, dep := range v.dependents {
-				destination := Vertex{Label: dep.label}
+				destination := Vertex{
+					Label:  dep.label,
+					Health: dep.health,
+				}
 				vertices[destination.Label] = destination
 				re, _ := g.graph.edges.find(dep, v)
 				new := Edge{
-					Label:       re.label,
-					Source:      destination,
-					Destination: Vertex{Label: v.label},
+					Label:  re.label,
+					Source: destination,
+					Destination: Vertex{
+						Label:  v.label,
+						Health: v.health,
+					},
 				}
 				edges[new.Label] = new
 				dfs(dep)
@@ -221,7 +243,10 @@ func (g *Graph) GetVertexDependents(label string, all bool) Subgraph {
 	}
 
 	// Sempre incluir o próprio vértice
-	vertices[v.label] = Vertex{Label: v.label}
+	vertices[v.label] = Vertex{
+		Label:  v.label,
+		Health: v.health,
+	}
 
 	sub := Subgraph{
 		Vertices: []Vertex{},
@@ -249,11 +274,17 @@ func (g *Graph) GetVertexDependencies(label string, all bool) Subgraph {
 		panic("vertex not found")
 	}
 
-	source := Vertex{Label: v.label}
+	source := Vertex{
+		Label:  v.label,
+		Health: v.health,
+	}
 
 	// Para dependências diretas
 	for _, dep := range v.dependencies {
-		destination := Vertex{Label: dep.label}
+		destination := Vertex{
+			Label:  dep.label,
+			Health: dep.health,
+		}
 		vertices[destination.Label] = destination
 		re, _ := g.graph.edges.find(v, dep)
 		new := Edge{
@@ -269,12 +300,18 @@ func (g *Graph) GetVertexDependencies(label string, all bool) Subgraph {
 		var dfs func(v *vertex)
 		dfs = func(v *vertex) {
 			for _, dep := range v.dependencies {
-				destination := Vertex{Label: dep.label}
+				destination := Vertex{
+					Label:  dep.label,
+					Health: dep.health,
+				}
 				vertices[destination.Label] = destination
 				re, _ := g.graph.edges.find(v, dep)
 				new := Edge{
-					Label:       re.label,
-					Source:      Vertex{Label: v.label},
+					Label: re.label,
+					Source: Vertex{
+						Label:  v.label,
+						Health: v.health,
+					},
 					Destination: destination,
 				}
 				edges[new.Label] = new
@@ -285,7 +322,10 @@ func (g *Graph) GetVertexDependencies(label string, all bool) Subgraph {
 	}
 
 	// Sempre incluir o próprio vértice
-	vertices[v.label] = Vertex{Label: v.label}
+	vertices[v.label] = Vertex{
+		Label:  v.label,
+		Health: v.health,
+	}
 
 	sub := Subgraph{
 		Vertices: []Vertex{},
@@ -331,9 +371,15 @@ func (g *Graph) Path(from, to string) Subgraph {
 				if e, ok := g.graph.edges.find(from, to); ok {
 					key := fmt.Sprintf("%d->%d", from.id, to.id)
 					edgeSet[key] = Edge{
-						Label:       e.label,
-						Source:      Vertex{Label: from.label},
-						Destination: Vertex{Label: to.label},
+						Label: e.label,
+						Source: Vertex{
+							Label:  from.label,
+							Health: from.health,
+						},
+						Destination: Vertex{
+							Label:  to.label,
+							Health: to.health,
+						},
 					}
 				}
 			}
@@ -359,7 +405,10 @@ func (g *Graph) Path(from, to string) Subgraph {
 	// Converter mapas para slices
 	var vertices []Vertex
 	for _, v := range vertexSet {
-		vertices = append(vertices, Vertex{Label: v.label})
+		vertices = append(vertices, Vertex{
+			Label:  v.label,
+			Health: v.health,
+		})
 	}
 
 	var edges []Edge
