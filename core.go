@@ -116,18 +116,9 @@ type edge struct {
 
 type vertexList []*vertex
 
-func (l *vertexList) add(i uint32, lbl string) *vertex {
-	if v, err := l.find(lbl); err == nil {
-		return v
-	}
-
-	new := &vertex{
-		id:           i,
-		label:        lbl,
-		health:       true,
-		dependents:   vertexList{},
-		dependencies: vertexList{},
-		lastCheck:    time.Now(),
+func (l *vertexList) add(new *vertex) *vertex {
+	if x, err := l.find(new.label); err == nil {
+		return x
 	}
 
 	*l = append(*l, new)
@@ -169,7 +160,15 @@ func new() *graph {
 }
 
 func (g *graph) newVertex(i uint32, l string) *vertex {
-	return g.vertices.add(i, l)
+	v := &vertex{
+		id:           i,
+		label:        l,
+		health:       true,
+		dependents:   vertexList{},
+		dependencies: vertexList{},
+		lastCheck:    time.Now(),
+	}
+	return g.vertices.add(v)
 }
 
 func (g *graph) newEdge(i uint32, l string, a, b *vertex) (*edge, error) {
