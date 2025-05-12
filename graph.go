@@ -71,6 +71,16 @@ func (g *Graph) GetVertexByLabel(label string) Vertex {
 	}
 }
 
+func (g *Graph) GetVertexHealth(label string) bool {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	v, ok := g.graph.vertices.find(label)
+	if !ok {
+		panic("vertex not found")
+	}
+	return v.health
+}
+
 func (g *Graph) SetVertexHealth(label string, health bool) {
 	g.mu.Lock()
 	defer g.mu.Unlock()

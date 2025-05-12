@@ -12,6 +12,16 @@ func TestGraph_Basics(t *testing.T) {
 	g.NewVertex("B")
 
 	g.NewEdge("A-B", "A", "B")
+
+	if g.GetVertexHealth("A") != true {
+		t.Errorf("Expected vertex A to be healthy, got %v", g.GetVertexHealth("A"))
+	}
+
+	g.SetVertexHealth("A", false)
+	if g.GetVertexHealth("A") != false {
+		t.Errorf("Expected vertex A to be unhealthy, got %v", g.GetVertexHealth("A"))
+	}
+
 }
 
 func TestGraph_NewEdge_Panic(t *testing.T) {
