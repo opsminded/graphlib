@@ -88,10 +88,6 @@ type edge struct {
 	destination *vertex
 }
 
-func (e *edge) Label() string {
-	return e.label
-}
-
 type vertexList []*vertex
 
 func (l *vertexList) add(i uint32, lbl string) *vertex {
@@ -132,18 +128,6 @@ type vertex struct {
 	dependents   vertexList
 	dependencies vertexList
 	lastCheck    time.Time
-}
-
-func (v *vertex) Label() string {
-	return v.label
-}
-
-func (v *vertex) Health() bool {
-	return v.health
-}
-
-func (v *vertex) SetHealth(h bool) {
-	v.health = h
 }
 
 type graph struct {

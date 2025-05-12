@@ -10,8 +10,8 @@ func TestCore_BasicsOfEdge(t *testing.T) {
 	b := g.newVertex(2, "B")
 	e := g.newEdge(4, "AB", a, b)
 
-	if e.Label() != "AB" {
-		t.Fatalf("Expected label to be 'AB', but got '%s'", e.Label())
+	if e.label != "AB" {
+		t.Fatalf("Expected label to be 'AB', but got '%s'", e.label)
 	}
 }
 
@@ -34,15 +34,15 @@ func TestCore_EdgesMapLength(t *testing.T) {
 func TestCore_BasicsOfVertex(t *testing.T) {
 	g := new()
 	a := g.newVertex(1, "A")
-	if a.Label() != "A" {
-		t.Fatalf("Expected label to be 'A', but got '%s'", a.Label())
+	if a.label != "A" {
+		t.Fatalf("Expected label to be 'A', but got '%s'", a.label)
 	}
-	if a.Health() != true {
+	if a.health != true {
 		t.Fatalf("Expected health to be true, but got false")
 	}
 
-	a.SetHealth(false)
-	if a.Health() != false {
+	a.health = false
+	if a.health != false {
 		t.Fatalf("Expected health to be false, but got true")
 	}
 }

@@ -71,6 +71,18 @@ func (g *Graph) GetVertexByLabel(label string) Vertex {
 	}
 }
 
+func (g *Graph) SetVertexHealth(label string, health bool) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	v, ok := g.graph.vertices.find(label)
+	if !ok {
+		panic("vertex not found")
+	}
+
+	v.health = health
+}
+
 func (g *Graph) GetEdgeByLabel(label string) Edge {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -122,7 +134,7 @@ func (g *Graph) Neighbors(label string) Subgraph {
 		destination := Vertex{Label: vDestination.label}
 		vertices = append(vertices, destination)
 		new := Edge{
-			Label:       vEdge.Label(),
+			Label:       vEdge.label,
 			Source:      source,
 			Destination: destination,
 		}
@@ -135,7 +147,7 @@ func (g *Graph) Neighbors(label string) Subgraph {
 		destination := Vertex{Label: vDestination.label}
 		vertices = append(vertices, destination)
 		new := Edge{
-			Label:       vEdge.Label(),
+			Label:       vEdge.label,
 			Source:      destination,
 			Destination: source,
 		}
