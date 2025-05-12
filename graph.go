@@ -45,69 +45,49 @@ func (g *Graph) NewVertex(label string) {
 	g.graph.newVertex(g.lastID, label)
 }
 
-func (g *Graph) NewEdge(label, a, b string) {
+func (g *Graph) NewEdge(label, a, b string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.lastID++
 
-	aV, aOK := g.graph.vertices.find(a)
-	bV, bOK := g.graph.vertices.find(b)
-	if !aOK || !bOK {
-		panic("vertex not found")
+	aV, err := g.graph.vertices.find(a)
+	if err != nil {
+		return err
+	}
+	bV, err := g.graph.vertices.find(b)
+	if err != nil {
+		return err
 	}
 
-	g.graph.newEdge(g.lastID, label, aV, bV)
+	_, err = g.graph.newEdge(g.lastID, label, aV, bV)
+	return err
 }
 
-func (g *Graph) GetVertexByLabel(label string) Vertex {
+func (g *Graph) GetVertexByLabel(label string) (Vertex, error) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
-	v, ok := g.graph.vertices.find(label)
-	if !ok {
-		panic("vertex not found")
+	v, err := g.graph.vertices.find(label)
+	if err != nil {
+		return Vertex{}, err
 	}
 
 	return Vertex{
 		Label:  v.label,
 		Health: v.health,
-	}
+	}, nil
 }
 
-func (g *Graph) SetVertexHealth(label string, health bool) {
+func (g *Graph) SetVertexHealth(label string, health bool) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	v, ok := g.graph.vertices.find(label)
-	if !ok {
-		panic("vertex not found")
+	v, err := g.graph.vertices.find(label)
+	if err != nil {
+		return err
 	}
 
 	v.health = health
-}
-
-func (g *Graph) GetEdgeByLabel(label string) Edge {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
-
-	for _, e := range g.graph.edges {
-		for _, edge := range e {
-			if edge.label == label {
-				return Edge{
-					Label: edge.label,
-					Source: Vertex{
-						Label:  edge.source.label,
-						Health: edge.source.health,
-					},
-					Destination: Vertex{
-						Label:  edge.destination.label,
-						Health: edge.destination.health,
-					},
-				}
-			}
-		}
-	}
-
-	panic("edge not found")
+	return nil
 }
 
 func (g *Graph) VertexLen() int {
@@ -122,16 +102,16 @@ func (g *Graph) EdgeLen() int {
 	return g.graph.edges.len()
 }
 
-func (g *Graph) Neighbors(label string) Subgraph {
+func (g *Graph) Neighbors(label string) (Subgraph, error) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 
 	vertices := []Vertex{}
 	edges := []Edge{}
 
-	vSource, ok := g.graph.vertices.find(label)
-	if !ok {
-		panic("vertex not found")
+	vSource, err := g.graph.vertices.find(label)
+	if err != nil {
+		return Subgraph{}, err
 	}
 
 	source := Vertex{
@@ -180,19 +160,19 @@ func (g *Graph) Neighbors(label string) Subgraph {
 	return Subgraph{
 		Vertices: vertices,
 		Edges:    edges,
-	}
+	}, nil
 }
 
-func (g *Graph) GetVertexDependents(label string, all bool) Subgraph {
+func (g *Graph) GetVertexDependents(label string, all bool) (Subgraph, error) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 
 	vertices := map[string]Vertex{}
 	edges := map[string]Edge{}
 
-	v, ok := g.graph.vertices.find(label)
-	if !ok {
-		panic("vertex not found")
+	v, err := g.graph.vertices.find(label)
+	if err != nil {
+		return Subgraph{}, err
 	}
 
 	source := Vertex{
@@ -259,19 +239,19 @@ func (g *Graph) GetVertexDependents(label string, all bool) Subgraph {
 	for _, e := range edges {
 		sub.Edges = append(sub.Edges, e)
 	}
-	return sub
+	return sub, nil
 }
 
-func (g *Graph) GetVertexDependencies(label string, all bool) Subgraph {
+func (g *Graph) GetVertexDependencies(label string, all bool) (Subgraph, error) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 
 	vertices := map[string]Vertex{}
 	edges := map[string]Edge{}
 
-	v, ok := g.graph.vertices.find(label)
-	if !ok {
-		panic("vertex not found")
+	v, err := g.graph.vertices.find(label)
+	if err != nil {
+		return Subgraph{}, err
 	}
 
 	source := Vertex{
@@ -339,18 +319,21 @@ func (g *Graph) GetVertexDependencies(label string, all bool) Subgraph {
 		sub.Edges = append(sub.Edges, e)
 	}
 
-	return sub
+	return sub, nil
 }
 
-func (g *Graph) Path(from, to string) Subgraph {
+func (g *Graph) Path(from, to string) (Subgraph, error) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 
-	start, ok1 := g.graph.vertices.find(from)
-	end, ok2 := g.graph.vertices.find(to)
+	start, err := g.graph.vertices.find(from)
+	if err != nil {
+		return Subgraph{}, err
+	}
 
-	if !ok1 || !ok2 {
-		panic("vertex not found")
+	end, err := g.graph.vertices.find(to)
+	if err != nil {
+		return Subgraph{}, err
 	}
 
 	vertexSet := make(map[uint32]*vertex)
@@ -368,7 +351,7 @@ func (g *Graph) Path(from, to string) Subgraph {
 				to := path[i+1]
 				vertexSet[from.id] = from
 				vertexSet[to.id] = to
-				if e, ok := g.graph.edges.find(from, to); ok {
+				if e, err := g.graph.edges.find(from, to); err == nil {
 					key := fmt.Sprintf("%d->%d", from.id, to.id)
 					edgeSet[key] = Edge{
 						Label: e.label,
@@ -419,5 +402,5 @@ func (g *Graph) Path(from, to string) Subgraph {
 	return Subgraph{
 		Vertices: vertices,
 		Edges:    edges,
-	}
+	}, nil
 }

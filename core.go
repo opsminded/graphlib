@@ -1,31 +1,34 @@
 package graphlib
 
 import (
+	"errors"
 	"time"
 )
 
 type edgesMap map[uint32]map[uint32]*edge
 
-func (e edgesMap) add(i uint32, l string, a, b *vertex) *edge {
-
-	// prevent nil vertices
-	if a == nil || b == nil {
-		panic("vertices are nil")
+func (e edgesMap) add(i uint32, l string, a, b *vertex) (*edge, error) {
+	// prevent edge multiplicity
+	if ex, err := e.find(a, b); err == nil {
+		return ex, nil
+	} else if !errors.As(err, &EdgeNotFoundError{}) {
+		return nil, err
 	}
 
 	// prevent bidirectional edges
-	if _, ok := e.find(b, a); ok {
-		panic("bidirectional edges are not allowed")
+	if e.wouldCreateBidirectionalEdge(a, b) {
+		return nil, BidirectionalEdgeError{
+			LabelA: a.label,
+			LabelB: b.label,
+		}
 	}
 
 	// prevent cycles
 	if e.wouldCreateCycle(a, b) {
-		panic("adding this edge would create a cycle")
-	}
-
-	// prevent edge-multiplicity
-	if x, ok := e.find(a, b); ok {
-		return x
+		return nil, CycleError{
+			LabelA: a.label,
+			LabelB: b.label,
+		}
 	}
 
 	a.dependencies = append(a.dependencies, b)
@@ -43,16 +46,39 @@ func (e edgesMap) add(i uint32, l string, a, b *vertex) *edge {
 	}
 	e[a.id][b.id] = new
 
-	return new
+	return new, nil
 }
 
-func (e edgesMap) find(a, b *vertex) (*edge, bool) {
+func (e edgesMap) find(a, b *vertex) (*edge, error) {
+	// prevent nil vertices
+	if a == nil {
+		return nil, VertexNilError{position: "first"}
+	}
+	if b == nil {
+		return nil, VertexNilError{position: "second"}
+	}
+
 	if destMap, ok := e[a.id]; ok {
 		if e, ok := destMap[b.id]; ok {
-			return e, true
+			return e, nil
 		}
 	}
-	return nil, false
+	return nil, EdgeNotFoundError{
+		LabelA: a.label,
+		LabelB: b.label,
+	}
+}
+
+func (e edgesMap) exists(a, b *vertex) bool {
+	if _, err := e.find(a, b); err == nil {
+		return true
+	}
+	return false
+}
+
+func (e edgesMap) wouldCreateBidirectionalEdge(from, to *vertex) bool {
+	// Swap the arguments to verify whether an edge already exists in the reverse direction.
+	return e.exists(to, from)
 }
 
 func (e edgesMap) wouldCreateCycle(from, to *vertex) bool {
@@ -91,7 +117,7 @@ type edge struct {
 type vertexList []*vertex
 
 func (l *vertexList) add(i uint32, lbl string) *vertex {
-	if v, ok := l.find(lbl); ok {
+	if v, err := l.find(lbl); err == nil {
 		return v
 	}
 
@@ -108,13 +134,13 @@ func (l *vertexList) add(i uint32, lbl string) *vertex {
 	return new
 }
 
-func (l *vertexList) find(lbl string) (*vertex, bool) {
+func (l *vertexList) find(lbl string) (*vertex, error) {
 	for _, v := range *l {
 		if v.label == lbl {
-			return v, true
+			return v, nil
 		}
 	}
-	return nil, false
+	return nil, VertexNotFoundError{Label: lbl}
 }
 
 func (l *vertexList) len() int {
@@ -146,6 +172,6 @@ func (g *graph) newVertex(i uint32, l string) *vertex {
 	return g.vertices.add(i, l)
 }
 
-func (g *graph) newEdge(i uint32, l string, a, b *vertex) *edge {
+func (g *graph) newEdge(i uint32, l string, a, b *vertex) (*edge, error) {
 	return g.edges.add(i, l, a, b)
 }

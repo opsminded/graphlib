@@ -1,6 +1,7 @@
 package graphlib_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/opsminded/graphlib"
@@ -11,31 +12,40 @@ func TestGraph_Basics(t *testing.T) {
 	g.NewVertex("A")
 	g.NewVertex("B")
 
-	g.NewEdge("A-B", "A", "B")
+	err := g.NewEdge("A-B", "A", "B")
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
 
-	if g.GetVertexByLabel("A").Health != true {
-		t.Errorf("Expected vertex A to be healthy, got %v", g.GetVertexByLabel("A").Health)
+	v, err := g.GetVertexByLabel("A")
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if v.Health != true {
+		t.Errorf("Expected vertex A to be healthy, got %v", v.Health)
 	}
 
 	g.SetVertexHealth("A", false)
-	if g.GetVertexByLabel("A").Health != false {
-		t.Errorf("Expected vertex A to be unhealthy, got %v", g.GetVertexByLabel("A").Health)
+	v, err = g.GetVertexByLabel("A")
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	if v.Health != false {
+		t.Errorf("Expected vertex A to be unhealthy, got %v", v.Health)
 	}
 
 }
 
-func TestGraph_NewEdge_Panic(t *testing.T) {
+func TestGraph_NewEdge_Error(t *testing.T) {
 	g := graphlib.NewGraph()
 	g.NewVertex("A")
 	g.NewVertex("B")
 
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("Expected panic, but did not get one")
-		}
-	}()
-
-	g.NewEdge("A-B", "A", "C") // C does not exist
+	err := g.NewEdge("A-B", "A", "C") // C does not exist
+	if !errors.As(err, &graphlib.VertexNotFoundError{}) {
+		t.Errorf("Expected vertex C to not be found, got %v", err)
+	}
 }
 
 func TestGraph_Getters(t *testing.T) {
@@ -44,45 +54,24 @@ func TestGraph_Getters(t *testing.T) {
 	g.NewVertex("B")
 	g.NewEdge("A-B", "A", "B")
 
-	v := g.GetVertexByLabel("A")
+	v, err := g.GetVertexByLabel("A")
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
 	if v.Label != "A" {
 		t.Errorf("Expected vertex label 'A', got '%s'", v.Label)
 	}
+}
 
-	e := g.GetEdgeByLabel("A-B")
-	if e.Label != "A-B" {
-		t.Errorf("Expected edge label 'A-B', got '%s'", e.Label)
+func TestGraph_GetVertexByLabel_Error(t *testing.T) {
+	g := graphlib.NewGraph()
+	g.NewVertex("A")
+	g.NewVertex("B")
+	g.NewEdge("A-B", "A", "B")
+	_, err := g.GetVertexByLabel("C") // C does not exist
+	if !errors.As(err, &graphlib.VertexNotFoundError{}) {
+		t.Errorf("Expected vertex C to not be found, got %v", err)
 	}
-}
-
-func TestGraph_GetVertexByLabel_Panic(t *testing.T) {
-	g := graphlib.NewGraph()
-	g.NewVertex("A")
-	g.NewVertex("B")
-	g.NewEdge("A-B", "A", "B")
-
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("Expected panic, but did not get one")
-		}
-	}()
-
-	g.GetVertexByLabel("C") // C does not exist
-}
-
-func TestGraph_GetEdgeByLabel_Panic(t *testing.T) {
-	g := graphlib.NewGraph()
-	g.NewVertex("A")
-	g.NewVertex("B")
-	g.NewEdge("A-B", "A", "B")
-
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("Expected panic, but did not get one")
-		}
-	}()
-
-	g.GetEdgeByLabel("C") // C does not exist
 }
 
 func TestGraph_Lengths(t *testing.T) {
@@ -115,7 +104,10 @@ func TestGraph_Neighbors(t *testing.T) {
 	g.NewEdge("C->D", "C", "D")
 
 	// Executa a função
-	subgraph := g.Neighbors("B")
+	subgraph, err := g.Neighbors("B")
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
 
 	// Esperados
 	expectedVertices := map[string]bool{
@@ -166,16 +158,12 @@ func TestGraph_Neighbors(t *testing.T) {
 	}
 }
 
-func TestGraph_Neighbors_VertexNotFound_Panic(t *testing.T) {
+func TestGraph_Neighbors_VertexNotFound_Error(t *testing.T) {
 	g := graphlib.NewGraph()
-
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("Expected panic, but did not get one")
-		}
-	}()
-
-	g.Neighbors("B")
+	_, err := g.Neighbors("B")
+	if err == nil {
+		t.Errorf("Expected error, got nil")
+	}
 }
 
 func TestGraph_GetVertexDependents(t *testing.T) {
@@ -196,7 +184,10 @@ func TestGraph_GetVertexDependents(t *testing.T) {
 	g.NewEdge("F->B", "F", "B")
 
 	// Testar dependentes diretos de D
-	sub := g.GetVertexDependents("D", false)
+	sub, err := g.GetVertexDependents("D", false)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
 
 	expectedDirect := map[string]bool{
 		"B": true,
@@ -216,7 +207,10 @@ func TestGraph_GetVertexDependents(t *testing.T) {
 	}
 
 	// Testar dependentes todos de D (all = true)
-	sub = g.GetVertexDependents("D", true)
+	sub, err = g.GetVertexDependents("D", true)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
 
 	expectedAll := map[string]bool{
 		"A": true,
@@ -238,16 +232,12 @@ func TestGraph_GetVertexDependents(t *testing.T) {
 	}
 }
 
-func TestGraph_GetVertexDependents_VertexNotFound_Panic(t *testing.T) {
+func TestGraph_GetVertexDependents_VertexNotFound_Error(t *testing.T) {
 	g := graphlib.NewGraph()
-
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("Expected panic, but did not get one")
-		}
-	}()
-
-	g.GetVertexDependents("X", false)
+	_, err := g.GetVertexDependents("X", false)
+	if err == nil {
+		t.Errorf("Expected error, got nil")
+	}
 }
 
 func TestGraph_GetVertexDependencies(t *testing.T) {
@@ -269,7 +259,10 @@ func TestGraph_GetVertexDependencies(t *testing.T) {
 	g.NewEdge("F->G", "F", "G")
 
 	// Teste 1: dependências diretas de G (should return F)
-	sub := g.GetVertexDependencies("C", false)
+	sub, err := g.GetVertexDependencies("C", false)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
 
 	expectedVertices := map[string]bool{
 		"C": true,
@@ -282,7 +275,10 @@ func TestGraph_GetVertexDependencies(t *testing.T) {
 	checkSubgraph(t, sub, expectedVertices, expectedEdges)
 
 	// Teste 2: dependências completas de G (should return F, C, A)
-	sub = g.GetVertexDependencies("C", true)
+	sub, err = g.GetVertexDependencies("C", true)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
 
 	expectedVertices = map[string]bool{
 		"C": true,
@@ -297,16 +293,12 @@ func TestGraph_GetVertexDependencies(t *testing.T) {
 	checkSubgraph(t, sub, expectedVertices, expectedEdges)
 }
 
-func TestGraph_GetVertexDependencies_VertexNotFound_Panic(t *testing.T) {
+func TestGraph_GetVertexDependencies_VertexNotFound_Error(t *testing.T) {
 	g := graphlib.NewGraph()
-
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("Expected panic, but did not get one")
-		}
-	}()
-
-	g.GetVertexDependencies("X", false)
+	_, err := g.GetVertexDependencies("X", false)
+	if err == nil {
+		t.Errorf("Expected error, got nil")
+	}
 }
 
 func TestGraph_Path(t *testing.T) {
@@ -330,7 +322,10 @@ func TestGraph_Path(t *testing.T) {
 	g.NewEdge("F->G", "F", "G")
 
 	// Executa a função
-	sub := g.Path("A", "G")
+	sub, err := g.Path("A", "G")
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
 
 	// Esperados
 	expectedVertices := map[string]bool{
@@ -351,16 +346,12 @@ func TestGraph_Path(t *testing.T) {
 	checkSubgraph(t, sub, expectedVertices, expectedEdges)
 }
 
-func TestGraph_Path_VertexNotFound_Panic(t *testing.T) {
+func TestGraph_Path_VertexNotFound_Error(t *testing.T) {
 	g := graphlib.NewGraph()
-
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("Expected panic, but did not get one")
-		}
-	}()
-
-	g.Path("A", "X")
+	_, err := g.Path("A", "X")
+	if err == nil {
+		t.Errorf("Expected error, got nil")
+	}
 }
 
 func keys(m map[string]bool) []string {

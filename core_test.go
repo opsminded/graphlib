@@ -1,17 +1,66 @@
 package graphlib
 
 import (
+	"errors"
 	"testing"
 )
 
 func TestCore_BasicsOfEdge(t *testing.T) {
 	g := new()
+
 	a := g.newVertex(1, "A")
 	b := g.newVertex(2, "B")
-	e := g.newEdge(4, "AB", a, b)
+	c := g.newVertex(3, "C")
+
+	e, err := g.newEdge(4, "AB", a, b)
+	if err != nil {
+		t.Fatalf("Expected no error, but got %v", err)
+	}
 
 	if e.label != "AB" {
 		t.Fatalf("Expected label to be 'AB', but got '%s'", e.label)
+	}
+
+	g.newEdge(5, "BC", b, c)
+
+	{
+		e1, _ := g.edges.find(a, b)
+		e2, err := g.newEdge(4, "AB", a, b)
+		if err != nil {
+			t.Fatalf("Expected no error, but got %v", err)
+		}
+
+		if e1 != e2 {
+			t.Fatalf("Expected edge to be the same, but got different edges")
+		}
+	}
+
+	{
+		_, err := g.newEdge(4, "AB", nil, b)
+		if !errors.As(err, &VertexNilError{}) {
+			t.Fatalf("Expected nil error but got %v", err)
+		}
+	}
+
+	{
+		_, err := g.newEdge(4, "AB", a, nil)
+		if !errors.As(err, &VertexNilError{}) {
+			t.Fatalf("Expected nil error but got %v", err)
+		}
+	}
+
+	{
+		_, err := g.newEdge(5, "BA", b, a)
+		if !errors.As(err, &BidirectionalEdgeError{}) {
+			t.Fatalf("Expected bidirectional edge error but got %v", err)
+		}
+	}
+
+	{
+		_, err := g.newEdge(6, "CA", c, a)
+		if !errors.As(err, &CycleError{}) {
+			t.Fatalf("Expected cycle error but got %v", err)
+		}
 	}
 }
 
@@ -45,6 +94,11 @@ func TestCore_BasicsOfVertex(t *testing.T) {
 	if a.health != false {
 		t.Fatalf("Expected health to be false, but got true")
 	}
+
+	b := g.newVertex(1, "A")
+	if a != b {
+		t.Fatalf("Expected vertex to be the same, but got different vertices")
+	}
 }
 
 func TestCore_VertexListLength(t *testing.T) {
@@ -61,66 +115,50 @@ func TestCore_VertexListLength(t *testing.T) {
 	}
 }
 
-func TestCore_BasicAddVertex(t *testing.T) {
-	g := new()
-	a := g.newVertex(1, "A")
-	b := g.newVertex(2, "A")
-	if a != b {
-		t.Fatalf("Expected vertex to be the same, but got different vertices")
-	}
-}
-
-func TestCore_BasicAddEdge(t *testing.T) {
-	g := new()
-	a := g.newVertex(1, "A")
-	b := g.newVertex(2, "B")
-	c := g.newVertex(3, "C")
-	d := g.newVertex(4, "D")
-
-	e := g.newEdge(4, "AB", a, b)
-	if e == nil {
-		t.Fatalf("Expected edge to be created, but got nil")
-	}
-
-	f := g.newEdge(5, "AB", a, b)
-	if f != e {
-		t.Fatalf("Expected edge to be the same, but got different edges")
-	}
-
-	g.newEdge(6, "BC", b, c)
-	g.newEdge(7, "CD", c, d)
-}
-
 func TestCore_AddNilVertexEdge(t *testing.T) {
 	g := new()
 	v := g.newVertex(1, "A")
 
-	// test if newEdge panics
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatalf("Expected panic, but did not panic")
+	{
+		_, err := g.newEdge(5, "AB", v, nil)
+		if !errors.As(err, &VertexNilError{}) {
+			t.Fatal("Expected nil error but got", err)
 		}
-	}()
-	g.newEdge(5, "AB", v, nil)
-	g.newEdge(5, "AB", nil, v)
-	g.newEdge(5, "AB", nil, nil)
+	}
+
+	{
+		_, err := g.newEdge(5, "AB", nil, v)
+		if !errors.As(err, &VertexNilError{}) {
+			t.Fatal("Expected nil error but got", err)
+		}
+	}
+
+	{
+		_, err := g.newEdge(5, "AB", nil, nil)
+		if !errors.As(err, &VertexNilError{}) {
+			t.Fatal("Expected nil error but got", err)
+		}
+	}
 }
 
-func TestCore_EdgeCycleDetectionPanic(t *testing.T) {
+func TestCore_EdgeCycleDetectionError(t *testing.T) {
 	g := new()
 	a := g.newVertex(1, "A")
 	b := g.newVertex(2, "B")
 	c := g.newVertex(3, "C")
 
-	g.newEdge(4, "AB", a, b)
-	g.newEdge(5, "BC", b, c)
+	if _, err := g.newEdge(4, "AB", a, b); err != nil {
+		t.Fatalf("Expected no error, but got %v", err)
+	}
 
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatalf("Expected panic, but did not panic")
-		}
-	}()
-	g.newEdge(6, "CA", c, a)
+	if _, err := g.newEdge(5, "BC", b, c); err != nil {
+		t.Fatalf("Expected no error, but got %v", err)
+	}
+
+	_, err := g.newEdge(6, "CA", c, a)
+	if !errors.As(err, &CycleError{}) {
+		t.Fatalf("Expected cycle error but got %v", err)
+	}
 }
 
 func TestCore_BidirectionalEdge(t *testing.T) {
@@ -128,12 +166,12 @@ func TestCore_BidirectionalEdge(t *testing.T) {
 	a := g.newVertex(1, "A")
 	b := g.newVertex(2, "B")
 
-	g.newEdge(4, "AB", a, b)
+	if _, err := g.newEdge(4, "AB", a, b); err != nil {
+		t.Fatalf("Expected no error, but got %v", err)
+	}
 
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatalf("Expected panic, but did not panic")
-		}
-	}()
-	g.newEdge(5, "BA", b, a)
+	_, err := g.newEdge(5, "BA", b, a)
+	if !errors.As(err, &BidirectionalEdgeError{}) {
+		t.Fatalf("Expected bidirectional edge error but got %v", err)
+	}
 }
