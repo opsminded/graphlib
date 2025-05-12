@@ -24,20 +24,20 @@ type Subgraph struct {
 }
 
 type Graph struct {
-	graph         *graph
-	mu            sync.RWMutex
-	lastID        uint32
-	checkInterval time.Duration
-	unhealthy     []*vertex
+	graph             *graph
+	mu                sync.RWMutex
+	lastID            uint32
+	checkInterval     time.Duration
+	unhealthyVertices []*vertex
 }
 
 func NewGraph() *Graph {
 	return &Graph{
-		graph:         new(),
-		mu:            sync.RWMutex{},
-		lastID:        0,
-		checkInterval: 5 * time.Second,
-		unhealthy:     []*vertex{},
+		graph:             new(),
+		mu:                sync.RWMutex{},
+		lastID:            0,
+		checkInterval:     5 * time.Second,
+		unhealthyVertices: []*vertex{},
 	}
 }
 
@@ -92,11 +92,11 @@ func (g *Graph) SetVertexHealth(label string, health bool) error {
 	v.health = health
 
 	if v.health {
-		g.unhealthy = slices.DeleteFunc(g.unhealthy, func(v *vertex) bool {
+		g.unhealthyVertices = slices.DeleteFunc(g.unhealthyVertices, func(v *vertex) bool {
 			return v.label == label
 		})
 	} else {
-		g.unhealthy = append(g.unhealthy, v)
+		g.unhealthyVertices = append(g.unhealthyVertices, v)
 	}
 	return nil
 }
@@ -422,7 +422,7 @@ func (g *Graph) UnhealthyNodes() []Vertex {
 
 	unhealthy := []Vertex{}
 
-	for _, v := range g.unhealthy {
+	for _, v := range g.unhealthyVertices {
 		if !v.health {
 			unhealthy = append(unhealthy, Vertex{
 				Label:  v.label,
