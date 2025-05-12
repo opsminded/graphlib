@@ -359,17 +359,17 @@ func TestGraph_UnhealthyNodes(t *testing.T) {
 	g.NewVertex("A")
 	g.NewVertex("B")
 
-	if u := g.UnhealthyNodes(); len(u) != 0 {
+	if u := g.UnhealthyVertices(); len(u) != 0 {
 		t.Errorf("Expected no unhealthy nodes, got %d", len(u))
 	}
 
 	g.SetVertexHealth("A", false)
-	if u := g.UnhealthyNodes(); len(u) != 1 {
+	if u := g.UnhealthyVertices(); len(u) != 1 {
 		t.Errorf("Expected no unhealthy nodes, got %d", len(u))
 	}
 
 	g.SetVertexHealth("A", true)
-	if u := g.UnhealthyNodes(); len(u) != 0 {
+	if u := g.UnhealthyVertices(); len(u) != 0 {
 		t.Errorf("Expected no unhealthy nodes, got %d", len(u))
 	}
 

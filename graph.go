@@ -416,7 +416,7 @@ func (g *Graph) Path(from, to string) (Subgraph, error) {
 	}, nil
 }
 
-func (g *Graph) UnhealthyNodes() []Vertex {
+func (g *Graph) UnhealthyVertices() []Vertex {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 
