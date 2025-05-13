@@ -89,14 +89,32 @@ func (g *Graph) SetVertexHealth(label string, health bool) error {
 		return err
 	}
 
-	v.health = health
+	return g.setVertexHealth(v, health)
+}
 
+func (g *Graph) ClearGraphHealthyStatus() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	for _, v := range g.graph.vertices {
+		v.health = true
+	}
+	g.unhealthyVertices = []*vertex{}
+}
+
+func (g *Graph) setVertexHealth(v *vertex, health bool) error {
+	v.health = health
 	if v.health {
-		g.unhealthyVertices = slices.DeleteFunc(g.unhealthyVertices, func(v *vertex) bool {
-			return v.label == label
+		g.unhealthyVertices = slices.DeleteFunc(g.unhealthyVertices, func(x *vertex) bool {
+			return x.label == v.label
 		})
 	} else {
 		g.unhealthyVertices = append(g.unhealthyVertices, v)
+		for _, dep := range v.dependents {
+			if dep.health {
+				g.setVertexHealth(dep, false)
+			}
+		}
 	}
 	return nil
 }
@@ -424,11 +442,97 @@ func (g *Graph) UnhealthyVertices() []Vertex {
 
 	for _, v := range g.unhealthyVertices {
 		if !v.health {
-			unhealthy = append(unhealthy, Vertex{
-				Label:  v.label,
-				Health: v.health,
-			})
+			if v.dependencies.len() == 0 || v.dependents.len() == 0 {
+				unhealthy = append(unhealthy, Vertex{
+					Label:  v.label,
+					Health: v.health,
+				})
+			}
 		}
 	}
 	return unhealthy
+}
+
+func (g *Graph) Lineage(from string) (Subgraph, error) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	start, err := g.graph.vertices.find(from)
+	if err != nil {
+		return Subgraph{}, err
+	}
+
+	// 1) cache de profundidades
+	depthMemo := map[uint32]int{}
+	var depth func(v *vertex) int
+	depth = func(v *vertex) int {
+		if d, ok := depthMemo[v.id]; ok {
+			return d
+		}
+		if len(v.dependencies) == 0 {
+			depthMemo[v.id] = 0
+			return 0
+		}
+		maxD := 0
+		for _, dep := range v.dependencies {
+			if d := depth(dep) + 1; d > maxD {
+				maxD = d
+			}
+		}
+		depthMemo[v.id] = maxD
+		return maxD
+	}
+
+	// 2) caminhada única
+	verts := []Vertex{{Label: start.label}}
+	edges := []Edge{}
+
+	curr := start
+	for {
+		if len(curr.dependencies) == 0 {
+			break
+		}
+		// escolhe dependência(s) mais profundas
+		bestDepth := -1
+		var best *vertex
+		tie := false
+		for _, dep := range curr.dependencies {
+			if d := depth(dep); d > bestDepth {
+				bestDepth, best, tie = d, dep, false
+			} else if d == bestDepth {
+				tie = true
+			}
+		}
+		// empate?  pára aqui
+		if tie {
+			break
+		}
+		// inclui aresta e prossegue
+		edgeCore, err := g.graph.edges.find(curr, best)
+		if err != nil {
+			return Subgraph{}, err
+		}
+
+		edges = append(edges, Edge{
+			Label: edgeCore.label,
+			Source: Vertex{
+				Label:  curr.label,
+				Health: curr.health,
+			},
+			Destination: Vertex{
+				Label:  best.label,
+				Health: best.health,
+			},
+		})
+		verts = append(verts, Vertex{
+			Label:  best.label,
+			Health: best.health,
+		})
+		curr = best
+	}
+
+	return Subgraph{
+		Vertices: verts,
+		Edges:    edges,
+	}, nil
 }
