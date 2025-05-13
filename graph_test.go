@@ -21,8 +21,8 @@ func TestGraph_Basics(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
-	if v.Health != true {
-		t.Errorf("Expected vertex A to be healthy, got %v", v.Health)
+	if v.Healthy != true {
+		t.Errorf("Expected vertex A to be healthy, got %v", v.Healthy)
 	}
 
 	g.SetVertexHealth("A", false)
@@ -31,8 +31,8 @@ func TestGraph_Basics(t *testing.T) {
 		t.Errorf("Expected no error, got %v", err)
 	}
 
-	if v.Health != false {
-		t.Errorf("Expected vertex A to be unhealthy, got %v", v.Health)
+	if v.Healthy != false {
+		t.Errorf("Expected vertex A to be unhealthy, got %v", v.Healthy)
 	}
 
 }

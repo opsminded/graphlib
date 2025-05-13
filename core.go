@@ -141,7 +141,7 @@ func (l *vertexList) len() int {
 type vertex struct {
 	id           uint32
 	label        string
-	health       bool
+	healthy      bool
 	dependents   vertexList
 	dependencies vertexList
 	lastCheck    time.Time
@@ -163,7 +163,7 @@ func (g *graph) newVertex(i uint32, l string) *vertex {
 	v := &vertex{
 		id:           i,
 		label:        l,
-		health:       true,
+		healthy:      true,
 		dependents:   vertexList{},
 		dependencies: vertexList{},
 		lastCheck:    time.Now(),

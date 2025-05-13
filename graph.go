@@ -8,8 +8,8 @@ import (
 )
 
 type Vertex struct {
-	Label  string
-	Health bool
+	Label   string
+	Healthy bool
 }
 
 type Edge struct {
@@ -75,8 +75,8 @@ func (g *Graph) GetVertexByLabel(label string) (Vertex, error) {
 	}
 
 	return Vertex{
-		Label:  v.label,
-		Health: v.health,
+		Label:   v.label,
+		Healthy: v.healthy,
 	}, nil
 }
 
@@ -97,21 +97,21 @@ func (g *Graph) ClearGraphHealthyStatus() {
 	defer g.mu.Unlock()
 
 	for _, v := range g.graph.vertices {
-		v.health = true
+		v.healthy = true
 	}
 	g.unhealthyVertices = []*vertex{}
 }
 
 func (g *Graph) setVertexHealth(v *vertex, health bool) error {
-	v.health = health
-	if v.health {
+	v.healthy = health
+	if v.healthy {
 		g.unhealthyVertices = slices.DeleteFunc(g.unhealthyVertices, func(x *vertex) bool {
 			return x.label == v.label
 		})
 	} else {
 		g.unhealthyVertices = append(g.unhealthyVertices, v)
 		for _, dep := range v.dependents {
-			if dep.health {
+			if dep.healthy {
 				g.setVertexHealth(dep, false)
 			}
 		}
@@ -144,16 +144,16 @@ func (g *Graph) Neighbors(label string) (Subgraph, error) {
 	}
 
 	source := Vertex{
-		Label:  vSource.label,
-		Health: vSource.health,
+		Label:   vSource.label,
+		Healthy: vSource.healthy,
 	}
 
 	for _, dep := range vSource.dependencies {
 		vDestination, _ := g.graph.vertices.find(dep.label)
 		vEdge, _ := g.graph.edges.find(vSource, vDestination)
 		destination := Vertex{
-			Label:  vDestination.label,
-			Health: vDestination.health,
+			Label:   vDestination.label,
+			Healthy: vDestination.healthy,
 		}
 		vertices = append(vertices, destination)
 		new := Edge{
@@ -168,8 +168,8 @@ func (g *Graph) Neighbors(label string) (Subgraph, error) {
 		vDestination, _ := g.graph.vertices.find(dep.label)
 		vEdge, _ := g.graph.edges.find(vDestination, vSource)
 		destination := Vertex{
-			Label:  vDestination.label,
-			Health: vDestination.health,
+			Label:   vDestination.label,
+			Healthy: vDestination.healthy,
 		}
 		vertices = append(vertices, destination)
 		new := Edge{
@@ -182,8 +182,8 @@ func (g *Graph) Neighbors(label string) (Subgraph, error) {
 
 	// Sempre incluir o próprio vértice
 	vertices = append(vertices, Vertex{
-		Label:  vSource.label,
-		Health: vSource.health,
+		Label:   vSource.label,
+		Healthy: vSource.healthy,
 	})
 
 	return Subgraph{
@@ -205,15 +205,15 @@ func (g *Graph) GetVertexDependents(label string, all bool) (Subgraph, error) {
 	}
 
 	source := Vertex{
-		Label:  v.label,
-		Health: v.health,
+		Label:   v.label,
+		Healthy: v.healthy,
 	}
 
 	// Para dependentes diretos
 	for _, dep := range v.dependents {
 		destination := Vertex{
-			Label:  dep.label,
-			Health: dep.health,
+			Label:   dep.label,
+			Healthy: dep.healthy,
 		}
 		vertices[destination.Label] = destination
 		re, _ := g.graph.edges.find(dep, v)
@@ -231,8 +231,8 @@ func (g *Graph) GetVertexDependents(label string, all bool) (Subgraph, error) {
 		dfs = func(v *vertex) {
 			for _, dep := range v.dependents {
 				destination := Vertex{
-					Label:  dep.label,
-					Health: dep.health,
+					Label:   dep.label,
+					Healthy: dep.healthy,
 				}
 				vertices[destination.Label] = destination
 				re, _ := g.graph.edges.find(dep, v)
@@ -240,8 +240,8 @@ func (g *Graph) GetVertexDependents(label string, all bool) (Subgraph, error) {
 					Label:  re.label,
 					Source: destination,
 					Destination: Vertex{
-						Label:  v.label,
-						Health: v.health,
+						Label:   v.label,
+						Healthy: v.healthy,
 					},
 				}
 				edges[new.Label] = new
@@ -253,8 +253,8 @@ func (g *Graph) GetVertexDependents(label string, all bool) (Subgraph, error) {
 
 	// Sempre incluir o próprio vértice
 	vertices[v.label] = Vertex{
-		Label:  v.label,
-		Health: v.health,
+		Label:   v.label,
+		Healthy: v.healthy,
 	}
 
 	sub := Subgraph{
@@ -284,15 +284,15 @@ func (g *Graph) GetVertexDependencies(label string, all bool) (Subgraph, error) 
 	}
 
 	source := Vertex{
-		Label:  v.label,
-		Health: v.health,
+		Label:   v.label,
+		Healthy: v.healthy,
 	}
 
 	// Para dependências diretas
 	for _, dep := range v.dependencies {
 		destination := Vertex{
-			Label:  dep.label,
-			Health: dep.health,
+			Label:   dep.label,
+			Healthy: dep.healthy,
 		}
 		vertices[destination.Label] = destination
 		re, _ := g.graph.edges.find(v, dep)
@@ -310,16 +310,16 @@ func (g *Graph) GetVertexDependencies(label string, all bool) (Subgraph, error) 
 		dfs = func(v *vertex) {
 			for _, dep := range v.dependencies {
 				destination := Vertex{
-					Label:  dep.label,
-					Health: dep.health,
+					Label:   dep.label,
+					Healthy: dep.healthy,
 				}
 				vertices[destination.Label] = destination
 				re, _ := g.graph.edges.find(v, dep)
 				new := Edge{
 					Label: re.label,
 					Source: Vertex{
-						Label:  v.label,
-						Health: v.health,
+						Label:   v.label,
+						Healthy: v.healthy,
 					},
 					Destination: destination,
 				}
@@ -332,8 +332,8 @@ func (g *Graph) GetVertexDependencies(label string, all bool) (Subgraph, error) 
 
 	// Sempre incluir o próprio vértice
 	vertices[v.label] = Vertex{
-		Label:  v.label,
-		Health: v.health,
+		Label:   v.label,
+		Healthy: v.healthy,
 	}
 
 	sub := Subgraph{
@@ -385,12 +385,12 @@ func (g *Graph) Path(from, to string) (Subgraph, error) {
 					edgeSet[key] = Edge{
 						Label: e.label,
 						Source: Vertex{
-							Label:  from.label,
-							Health: from.health,
+							Label:   from.label,
+							Healthy: from.healthy,
 						},
 						Destination: Vertex{
-							Label:  to.label,
-							Health: to.health,
+							Label:   to.label,
+							Healthy: to.healthy,
 						},
 					}
 				}
@@ -418,8 +418,8 @@ func (g *Graph) Path(from, to string) (Subgraph, error) {
 	var vertices []Vertex
 	for _, v := range vertexSet {
 		vertices = append(vertices, Vertex{
-			Label:  v.label,
-			Health: v.health,
+			Label:   v.label,
+			Healthy: v.healthy,
 		})
 	}
 
@@ -441,11 +441,11 @@ func (g *Graph) UnhealthyVertices() []Vertex {
 	unhealthy := []Vertex{}
 
 	for _, v := range g.unhealthyVertices {
-		if !v.health {
+		if !v.healthy {
 			if v.dependencies.len() == 0 || v.dependents.len() == 0 {
 				unhealthy = append(unhealthy, Vertex{
-					Label:  v.label,
-					Health: v.health,
+					Label:   v.label,
+					Healthy: v.healthy,
 				})
 			}
 		}
@@ -516,17 +516,17 @@ func (g *Graph) Lineage(from string) (Subgraph, error) {
 		edges = append(edges, Edge{
 			Label: edgeCore.label,
 			Source: Vertex{
-				Label:  curr.label,
-				Health: curr.health,
+				Label:   curr.label,
+				Healthy: curr.healthy,
 			},
 			Destination: Vertex{
-				Label:  best.label,
-				Health: best.health,
+				Label:   best.label,
+				Healthy: best.healthy,
 			},
 		})
 		verts = append(verts, Vertex{
-			Label:  best.label,
-			Health: best.health,
+			Label:   best.label,
+			Healthy: best.healthy,
 		})
 		curr = best
 	}

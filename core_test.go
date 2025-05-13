@@ -86,12 +86,12 @@ func TestCore_BasicsOfVertex(t *testing.T) {
 	if a.label != "A" {
 		t.Fatalf("Expected label to be 'A', but got '%s'", a.label)
 	}
-	if a.health != true {
+	if a.healthy != true {
 		t.Fatalf("Expected health to be true, but got false")
 	}
 
-	a.health = false
-	if a.health != false {
+	a.healthy = false
+	if a.healthy != false {
 		t.Fatalf("Expected health to be false, but got true")
 	}
 
