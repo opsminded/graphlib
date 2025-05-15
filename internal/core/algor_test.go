@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/opsminded/graphlib/internal/core"
+	"github.com/opsminded/graphlib/v2/internal/core"
 )
 
 func TestVertexNeighbors(t *testing.T) {

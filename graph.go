@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opsminded/graphlib/internal/core"
+	"github.com/opsminded/graphlib/v2/internal/core"
 )
 
 type Edge = core.Edge
