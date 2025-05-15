@@ -87,3 +87,9 @@ func (g *Graph) Path(src, tgt string) (Subgraph, error) {
 	defer g.mu.RUnlock()
 	return g.graph.Path(src, tgt)
 }
+
+func (g *Graph) VertexNeighbors(key string) (Subgraph, error) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.graph.VertexNeighbors(key)
+}

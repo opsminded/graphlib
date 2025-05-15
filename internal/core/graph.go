@@ -54,7 +54,7 @@ func NewSoAGraph() *Graph {
 		lookup:       make(map[string]int, 1000),
 		dependents:   make(map[int]map[int]struct{}, 1000),
 		dependencies: make(map[int]map[int]struct{}, 1000),
-		nowFn:        time.Now().UnixNano,
+		nowFn:        func() int64 { return time.Now().UnixNano() },
 	}
 
 	return g
@@ -150,6 +150,18 @@ func (g *Graph) GraphStats() Stats {
 		stats.TotalEdges += len(deps)
 	}
 
+	stats.UnhealthyVertices = make([]Vertex, 0, stats.TotalUnhealthyVertices)
+	for i, healthy := range g.healthy {
+		if !healthy {
+			stats.UnhealthyVertices = append(stats.UnhealthyVertices, Vertex{
+				Key:       g.keys[i],
+				Label:     g.labels[i],
+				Healthy:   g.healthy[i],
+				LastCheck: g.LastCheck[i],
+			})
+		}
+	}
+
 	return stats
 }
 
@@ -175,14 +187,14 @@ func (g *Graph) StartHealthCheckLoop(ctx context.Context, checkInterval time.Dur
 	go func() {
 		ticker := time.NewTicker(checkInterval)
 		defer ticker.Stop()
-		log.Println("[core] health check loop stopped")
+		log.Println("[core] health check loop started")
 
 		for {
 			select {
 			case <-ticker.C:
 				g.updateHealthStatusAndPropagate(checkInterval)
 			case <-ctx.Done():
-				log.Println("health check loop stopped")
+				log.Println("[core] health check loop stopped")
 				return
 			}
 		}
@@ -192,8 +204,9 @@ func (g *Graph) StartHealthCheckLoop(ctx context.Context, checkInterval time.Dur
 func (g *Graph) updateHealthStatusAndPropagate(checkInterval time.Duration) {
 	now := g.nowFn()
 
-	log.Println(now)
-	log.Println(checkInterval.Nanoseconds())
+	log.Println("g now", now)
+	log.Println("checkInterval.Nanoseconds", checkInterval.Nanoseconds())
+	log.Println("go time", time.Now().UnixNano())
 
 	for i, ok := range g.healthy {
 
@@ -205,7 +218,9 @@ func (g *Graph) updateHealthStatusAndPropagate(checkInterval time.Duration) {
 		log.Println("min", min)
 
 		if ok && min < now {
+			log.Println("healthy", g.keys[i], "unhealthy")
 			g.healthy[i] = false
+			g.LastCheck[i] = g.nowFn()
 		}
 	}
 
@@ -218,11 +233,14 @@ func (g *Graph) updateHealthStatusAndPropagate(checkInterval time.Duration) {
 }
 
 func (g *Graph) propagateUnhealthy(v int, visited map[int]struct{}) {
+	log.Println("propagateUnhealthy", g.keys[v])
+
 	if _, seen := visited[v]; seen {
 		return
 	}
 	visited[v] = struct{}{}
 	g.healthy[v] = false
+	g.LastCheck[v] = g.nowFn()
 
 	for d := range g.dependents[v] {
 		g.propagateUnhealthy(d, visited)
