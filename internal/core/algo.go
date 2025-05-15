@@ -4,6 +4,57 @@ import (
 	"fmt"
 )
 
+func (g *Graph) VertexNeighbors(key string) (Subgraph, error) {
+	// lookup
+	rootID, ok := g.lookup[key]
+	if !ok {
+		return Subgraph{}, VertexNotFoundErr{Key: key}
+	}
+
+	// coletores
+	verticesSet := map[int]struct{}{rootID: {}}
+	type edgeKey struct{ src, dst int }
+	edgesSet := make(map[edgeKey]struct{}, 8)
+	addEdge := func(s, t int) { edgesSet[edgeKey{s, t}] = struct{}{} }
+
+	// vizinhos diretos
+	if outs, ok := g.dependencies[rootID]; ok {
+		for tgt := range outs {
+			verticesSet[tgt] = struct{}{}
+			addEdge(rootID, tgt)
+		}
+	}
+
+	if ins, ok := g.dependents[rootID]; ok {
+		for src := range ins {
+			verticesSet[src] = struct{}{}
+			addEdge(src, rootID)
+		}
+	}
+
+	// materializa DTO
+	vertices := make([]Vertex, 0, len(verticesSet))
+	for id := range verticesSet {
+		vertices = append(vertices, Vertex{
+			Key:       g.keys[id],
+			Label:     g.labels[id],
+			Healthy:   g.healthy[id],
+			LastCheck: g.LastCheck[id],
+		})
+	}
+
+	edges := make([]Edge, 0, len(edgesSet))
+	for k := range edgesSet {
+		edges = append(edges, Edge{
+			Key:    fmt.Sprintf("%s-%s", g.keys[k.src], g.keys[k.dst]),
+			Source: g.keys[k.src],
+			Target: g.keys[k.dst],
+		})
+	}
+
+	return Subgraph{Vertices: vertices, Edges: edges}, nil
+}
+
 func (g *Graph) VertexDependencies(key string, all bool) (Subgraph, error) {
 	// lookup
 	rootID, ok := g.lookup[key]
@@ -13,7 +64,6 @@ func (g *Graph) VertexDependencies(key string, all bool) (Subgraph, error) {
 
 	// coletores
 	verticesSet := map[int]struct{}{rootID: {}}
-
 	type edgeKey struct{ src, dst int }
 	edgesSet := make(map[edgeKey]struct{}, 8)
 	addEdge := func(s, t int) { edgesSet[edgeKey{s, t}] = struct{}{} }
@@ -126,7 +176,7 @@ func (g *Graph) VertexDependents(key string, all bool) (Subgraph, error) {
 		}
 	}
 
-	// materializa
+	// materializar DTO
 	vertices := make([]Vertex, 0, len(verticesSet))
 	for id := range verticesSet {
 		vertices = append(vertices, Vertex{

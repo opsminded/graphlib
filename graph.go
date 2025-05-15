@@ -11,21 +11,19 @@ import (
 type Edge = core.Edge
 type Vertex = core.Vertex
 type Subgraph = core.Subgraph
+type Stats = core.Stats
 
 type Graph struct {
-	graph             *core.Graph
-	mu                sync.RWMutex
-	checkInterval     time.Duration
-	unhealthyVertices []*Vertex
+	graph *core.Graph
+	mu    sync.RWMutex
 }
 
-func NewGraph(ctx context.Context) *Graph {
-	return &Graph{
-		graph:             core.NewSoAGraph(),
-		mu:                sync.RWMutex{},
-		checkInterval:     5 * time.Second,
-		unhealthyVertices: []*Vertex{},
+func NewGraph() *Graph {
+	g := &Graph{
+		graph: core.NewSoAGraph(),
+		mu:    sync.RWMutex{},
 	}
+	return g
 }
 
 func (g *Graph) NewVertex(key, label string, healthy bool) {
@@ -40,6 +38,26 @@ func (g *Graph) NewEdge(src, tgt string) error {
 	return g.graph.AddEdge(src, tgt)
 }
 
+func (g *Graph) GetVertex(key string) (Vertex, error) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	v, err := g.graph.Find(key)
+	if err != nil {
+		return Vertex{}, err
+	}
+	return v, nil
+}
+
+func (g *Graph) StartHealthCheckLoop(ctx context.Context, check time.Duration) {
+	g.graph.StartHealthCheckLoop(ctx, check)
+}
+
+func (g *Graph) GraphStats() Stats {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.graph.GraphStats()
+}
+
 func (g *Graph) SetVertexHealth(key string, health bool) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -50,16 +68,6 @@ func (g *Graph) ClearGraphHealthyStatus() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.graph.ClearHealthyStatus()
-}
-
-func (g *Graph) GetVertex(key string) (Vertex, error) {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
-	v, err := g.graph.Find(key)
-	if err != nil {
-		return Vertex{}, err
-	}
-	return v, nil
 }
 
 func (g *Graph) VertexDependents(key string, all bool) (Subgraph, error) {

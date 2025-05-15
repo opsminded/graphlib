@@ -1,7 +1,9 @@
 package core
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -23,6 +25,15 @@ type Subgraph struct {
 	Edges    []Edge
 }
 
+type Stats struct {
+	TotalVertices          int
+	TotalUnhealthyVertices int
+	TotalEdges             int
+	TotalHealthyVertices   int
+
+	UnhealthyVertices []Vertex
+}
+
 type Graph struct {
 	labels       []string
 	healthy      []bool
@@ -31,10 +42,11 @@ type Graph struct {
 	lookup       map[string]int
 	dependents   map[int]map[int]struct{}
 	dependencies map[int]map[int]struct{}
+	nowFn        func() int64
 }
 
 func NewSoAGraph() *Graph {
-	return &Graph{
+	g := &Graph{
 		labels:       make([]string, 0, 1000),
 		healthy:      make([]bool, 0, 1000),
 		LastCheck:    make([]int64, 0, 1000),
@@ -42,7 +54,10 @@ func NewSoAGraph() *Graph {
 		lookup:       make(map[string]int, 1000),
 		dependents:   make(map[int]map[int]struct{}, 1000),
 		dependencies: make(map[int]map[int]struct{}, 1000),
+		nowFn:        time.Now().UnixNano,
 	}
+
+	return g
 }
 
 func (g *Graph) AddVertex(key string, label string, healthy bool) int {
@@ -56,7 +71,7 @@ func (g *Graph) AddVertex(key string, label string, healthy bool) int {
 
 	g.labels = append(g.labels, label)
 	g.healthy = append(g.healthy, healthy)
-	g.LastCheck = append(g.LastCheck, time.Now().UnixNano())
+	g.LastCheck = append(g.LastCheck, g.nowFn())
 
 	return idx
 }
@@ -115,9 +130,27 @@ func (g *Graph) Find(key string) (Vertex, error) {
 	}, nil
 }
 
-func (g *Graph) exists(src, tgt int) bool {
-	_, ok := g.dependencies[src][tgt]
-	return ok
+func (g *Graph) GraphStats() Stats {
+	stats := Stats{
+		TotalVertices:          len(g.keys),
+		TotalHealthyVertices:   0,
+		TotalUnhealthyVertices: 0,
+		TotalEdges:             0,
+	}
+
+	for _, healthy := range g.healthy {
+		if healthy {
+			stats.TotalHealthyVertices++
+		} else {
+			stats.TotalUnhealthyVertices++
+		}
+	}
+
+	for _, deps := range g.dependencies {
+		stats.TotalEdges += len(deps)
+	}
+
+	return stats
 }
 
 func (g *Graph) SetVertexHealth(key string, health bool) error {
@@ -127,7 +160,7 @@ func (g *Graph) SetVertexHealth(key string, health bool) error {
 	}
 
 	g.healthy[v] = health
-	g.LastCheck[v] = time.Now().UnixNano()
+	g.LastCheck[v] = g.nowFn()
 
 	return nil
 }
@@ -136,6 +169,69 @@ func (g *Graph) ClearHealthyStatus() {
 	for k := range g.healthy {
 		g.healthy[k] = true
 	}
+}
+
+func (g *Graph) StartHealthCheckLoop(ctx context.Context, checkInterval time.Duration) {
+	go func() {
+		ticker := time.NewTicker(checkInterval)
+		defer ticker.Stop()
+		log.Println("[core] health check loop stopped")
+
+		for {
+			select {
+			case <-ticker.C:
+				g.updateHealthStatusAndPropagate(checkInterval)
+			case <-ctx.Done():
+				log.Println("health check loop stopped")
+				return
+			}
+		}
+	}()
+}
+
+func (g *Graph) updateHealthStatusAndPropagate(checkInterval time.Duration) {
+	now := g.nowFn()
+
+	log.Println(now)
+	log.Println(checkInterval.Nanoseconds())
+
+	for i, ok := range g.healthy {
+
+		lastCheck := g.LastCheck[i]
+		duration := checkInterval.Nanoseconds()
+		min := lastCheck + duration
+		log.Println("lastCheck", lastCheck)
+		log.Println("duration", duration)
+		log.Println("min", min)
+
+		if ok && min < now {
+			g.healthy[i] = false
+		}
+	}
+
+	visited := make(map[int]struct{}, 10)
+	for i, ok := range g.healthy {
+		if !ok {
+			g.propagateUnhealthy(i, visited)
+		}
+	}
+}
+
+func (g *Graph) propagateUnhealthy(v int, visited map[int]struct{}) {
+	if _, seen := visited[v]; seen {
+		return
+	}
+	visited[v] = struct{}{}
+	g.healthy[v] = false
+
+	for d := range g.dependents[v] {
+		g.propagateUnhealthy(d, visited)
+	}
+}
+
+func (g *Graph) exists(src, tgt int) bool {
+	_, ok := g.dependencies[src][tgt]
+	return ok
 }
 
 func (g *Graph) wouldCreateCycle(src, tgt int) bool {
