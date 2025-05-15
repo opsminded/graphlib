@@ -20,7 +20,7 @@ type Graph struct {
 
 func NewGraph() *Graph {
 	g := &Graph{
-		graph: core.NewSoAGraph(),
+		graph: core.NewSoAGraph(nil),
 		mu:    sync.RWMutex{},
 	}
 	return g

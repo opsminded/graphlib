@@ -3,7 +3,8 @@ package core
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
+	"os"
 	"time"
 )
 
@@ -43,9 +44,14 @@ type Graph struct {
 	dependents   map[int]map[int]struct{}
 	dependencies map[int]map[int]struct{}
 	nowFn        func() int64
+	logger       *slog.Logger
 }
 
-func NewSoAGraph() *Graph {
+func NewSoAGraph(logger *slog.Logger) *Graph {
+	if logger == nil {
+		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	}
+
 	g := &Graph{
 		labels:       make([]string, 0, 1000),
 		healthy:      make([]bool, 0, 1000),
@@ -55,17 +61,23 @@ func NewSoAGraph() *Graph {
 		dependents:   make(map[int]map[int]struct{}, 1000),
 		dependencies: make(map[int]map[int]struct{}, 1000),
 		nowFn:        func() int64 { return time.Now().UnixNano() },
+		logger:       logger,
 	}
 
 	return g
 }
 
 func (g *Graph) AddVertex(key string, label string, healthy bool) int {
+	g.logger.Debug("core.Graph.AddVertex", slog.String("key", key), slog.String("label", label), slog.Bool("healthy", healthy))
+
 	if k, ok := g.lookup[key]; ok {
+		g.logger.Debug("core.Graph.AddVertex lookup found vertex. returning the integer id", slog.String("key", key), slog.Int("id", k))
 		return k
 	}
 
 	idx := len(g.labels)
+	g.logger.Debug("core.Graph.AddVertex could not find vertex. A new vertex will be created", slog.String("key", key), slog.Int("id", idx))
+
 	g.keys[idx] = key
 	g.lookup[key] = idx
 
@@ -77,29 +89,42 @@ func (g *Graph) AddVertex(key string, label string, healthy bool) int {
 }
 
 func (g *Graph) AddEdge(src, tgt string) error {
+	g.logger.Debug("core.Graph.AddEdge", slog.String("src", src), slog.String("tgt", tgt))
+
 	ksrc, ok := g.lookup[src]
 	if !ok {
-		return VertexNotFoundErr{Key: src}
+		err := VertexNotFoundErr{Key: src}
+		g.logger.Error("core.Graph.AddEdge src lookup error", slog.String("key", src), slog.String("err", err.Error()))
+		return err
 	}
 
 	ktgt, ok := g.lookup[tgt]
 	if !ok {
-		return VertexNotFoundErr{Key: tgt}
+		err := VertexNotFoundErr{Key: tgt}
+		g.logger.Error("core.Graph.AddEdge tgt lookup error", slog.String("key", tgt), slog.String("err", err.Error()))
+		return err
 	}
+
+	g.logger.Debug("core.Graph.AddEdge src and tgt lookup success", slog.String("src", src), slog.String("tgt", tgt))
 
 	// prevent edge multiplicity
 	if g.exists(ksrc, ktgt) {
+		g.logger.Info("core.Graph.AddEdge already exists", slog.String("src", src), slog.String("tgt", tgt))
 		return nil
 	}
 
 	// prevent bidirectional edges
 	if g.exists(ktgt, ksrc) {
-		return BidirectionalEdgeErr{Src: src, Tgt: tgt}
+		err := BidirectionalEdgeErr{Src: src, Tgt: tgt}
+		g.logger.Error("core.Graph.AddEdge will cause a bidirectional relation", slog.String("src", src), slog.String("tgt", tgt), slog.String("err", err.Error()))
+		return err
 	}
 
 	// prevent cycles
 	if g.wouldCreateCycle(ksrc, ktgt) {
-		return CycleErr{Src: src, Tgt: tgt}
+		err := CycleErr{Src: src, Tgt: tgt}
+		g.logger.Error("core.Graph.AddEdge will cause a cycle", slog.String("src", src), slog.String("tgt", tgt), slog.String("err", err.Error()))
+		return err
 	}
 
 	if g.dependencies[ksrc] == nil {
@@ -110,6 +135,8 @@ func (g *Graph) AddEdge(src, tgt string) error {
 		g.dependents[ktgt] = make(map[int]struct{}, 4)
 	}
 
+	g.logger.Debug("core.Graph.AddEdge Edge will be created", slog.String("src", src), slog.String("tgt", tgt))
+
 	g.dependencies[ksrc][ktgt] = struct{}{}
 	g.dependents[ktgt][ksrc] = struct{}{}
 
@@ -117,9 +144,13 @@ func (g *Graph) AddEdge(src, tgt string) error {
 }
 
 func (g *Graph) Find(key string) (Vertex, error) {
+	g.logger.Debug("core.Graph.Find", slog.String("key", key))
+
 	v, ok := g.lookup[key]
 	if !ok {
-		return Vertex{}, VertexNotFoundErr{Key: key}
+		err := VertexNotFoundErr{Key: key}
+		g.logger.Error("core.Graph.Find lookup error", slog.String("key", key), slog.String("err", err.Error()))
+		return Vertex{}, err
 	}
 
 	return Vertex{
@@ -131,6 +162,8 @@ func (g *Graph) Find(key string) (Vertex, error) {
 }
 
 func (g *Graph) GraphStats() Stats {
+	g.logger.Debug("core.Graph.GraphStats")
+
 	stats := Stats{
 		TotalVertices:          len(g.keys),
 		TotalHealthyVertices:   0,
@@ -162,14 +195,26 @@ func (g *Graph) GraphStats() Stats {
 		}
 	}
 
+	g.logger.Info("core.Graph.GraphStats",
+		slog.Int("TotalVertices", stats.TotalVertices),
+		slog.Int("TotalHealthyVertices", stats.TotalHealthyVertices),
+		slog.Int("TotalUnhealthyVertices", stats.TotalUnhealthyVertices),
+		slog.Int("TotalEdges", stats.TotalEdges))
+
 	return stats
 }
 
 func (g *Graph) SetVertexHealth(key string, health bool) error {
+	g.logger.Debug("core.Graph.SetVertexHealth", slog.String("key", key), slog.Bool("health", health))
+
 	v, ok := g.lookup[key]
 	if !ok {
-		return VertexNotFoundErr{Key: key}
+		err := VertexNotFoundErr{Key: key}
+		g.logger.Error("core.Graph.SetVertexHealth lookup error", slog.String("key", key), slog.String("err", err.Error()))
+		return err
 	}
+
+	g.logger.Info("core.Graph.SetVertexHealth lookup success. The health status will be changed", slog.String("key", key), slog.Int("id", v), slog.Bool("health", health))
 
 	g.healthy[v] = health
 	g.LastCheck[v] = g.nowFn()
@@ -178,23 +223,26 @@ func (g *Graph) SetVertexHealth(key string, health bool) error {
 }
 
 func (g *Graph) ClearHealthyStatus() {
+	g.logger.Debug("core.Graph.ClearHealthyStatus")
 	for k := range g.healthy {
 		g.healthy[k] = true
 	}
 }
 
 func (g *Graph) StartHealthCheckLoop(ctx context.Context, checkInterval time.Duration) {
+	g.logger.Debug("core.Graph.StartHealthCheckLoop", slog.Duration("checkInterval", checkInterval))
+
 	go func() {
 		ticker := time.NewTicker(checkInterval)
 		defer ticker.Stop()
-		log.Println("[core] health check loop started")
+		g.logger.Info("core.Graph.StartHealthCheckLoop go routine started", slog.Duration("checkInterval", checkInterval))
 
 		for {
 			select {
 			case <-ticker.C:
 				g.updateHealthStatusAndPropagate(checkInterval)
 			case <-ctx.Done():
-				log.Println("[core] health check loop stopped")
+				g.logger.Info("core.Graph.StartHealthCheckLoop context done")
 				return
 			}
 		}
@@ -202,23 +250,17 @@ func (g *Graph) StartHealthCheckLoop(ctx context.Context, checkInterval time.Dur
 }
 
 func (g *Graph) updateHealthStatusAndPropagate(checkInterval time.Duration) {
+	g.logger.Debug("core.Graph.updateHealthStatusAndPropagate", slog.Duration("checkInterval", checkInterval))
+
 	now := g.nowFn()
 
-	log.Println("g now", now)
-	log.Println("checkInterval.Nanoseconds", checkInterval.Nanoseconds())
-	log.Println("go time", time.Now().UnixNano())
-
 	for i, ok := range g.healthy {
-
 		lastCheck := g.LastCheck[i]
 		duration := checkInterval.Nanoseconds()
 		min := lastCheck + duration
-		log.Println("lastCheck", lastCheck)
-		log.Println("duration", duration)
-		log.Println("min", min)
 
 		if ok && min < now {
-			log.Println("healthy", g.keys[i], "unhealthy")
+			g.logger.Info("core.Graph.updateHealthStatusAndPropagate will change vertex health to false", slog.Int("id", i), slog.String("key", g.keys[i]))
 			g.healthy[i] = false
 			g.LastCheck[i] = g.nowFn()
 		}
@@ -227,14 +269,13 @@ func (g *Graph) updateHealthStatusAndPropagate(checkInterval time.Duration) {
 	visited := make(map[int]struct{}, 10)
 	for i, ok := range g.healthy {
 		if !ok {
+			g.logger.Info("core.Graph.updateHealthStatusAndPropagate will propagate now", slog.Int("id", i), slog.String("key", g.keys[i]))
 			g.propagateUnhealthy(i, visited)
 		}
 	}
 }
 
 func (g *Graph) propagateUnhealthy(v int, visited map[int]struct{}) {
-	log.Println("propagateUnhealthy", g.keys[v])
-
 	if _, seen := visited[v]; seen {
 		return
 	}
@@ -248,12 +289,16 @@ func (g *Graph) propagateUnhealthy(v int, visited map[int]struct{}) {
 }
 
 func (g *Graph) exists(src, tgt int) bool {
+	g.logger.Debug("core.Graph.exists", slog.Int("src", src), slog.Int("tgt", tgt))
 	_, ok := g.dependencies[src][tgt]
 	return ok
 }
 
 func (g *Graph) wouldCreateCycle(src, tgt int) bool {
+	g.logger.Debug("core.Graph.wouldCreateCycle", slog.Int("src", src), slog.Int("tgt", tgt))
+
 	if src == tgt {
+		g.logger.Info("core.Graph.wouldCreateCycle src and tgt is the same", slog.Int("src", src), slog.Int("tgt", tgt))
 		return true
 	}
 

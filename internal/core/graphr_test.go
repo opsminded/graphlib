@@ -9,7 +9,7 @@ import (
 )
 
 func TestGraphBasics(t *testing.T) {
-	g := NewSoAGraph()
+	g := NewSoAGraph(nil)
 
 	g.AddVertex("A", "A", true)
 	g.AddVertex("B", "B", true)
@@ -35,7 +35,7 @@ func TestGraphBasics(t *testing.T) {
 }
 
 func TestGraphAddVertex(t *testing.T) {
-	g := NewSoAGraph()
+	g := NewSoAGraph(nil)
 
 	a1 := g.AddVertex("A", "A", true)
 	a2 := g.AddVertex("A", "A", true)
@@ -51,7 +51,7 @@ func TestGraphAddVertex(t *testing.T) {
 }
 
 func TestGraphAddEdge(t *testing.T) {
-	g := NewSoAGraph()
+	g := NewSoAGraph(nil)
 
 	g.AddVertex("A", "A", true)
 	g.AddVertex("B", "B", true)
@@ -84,7 +84,7 @@ func TestGraphAddEdge(t *testing.T) {
 }
 
 func TestGraphCycleDetection(t *testing.T) {
-	g := NewSoAGraph()
+	g := NewSoAGraph(nil)
 	g.AddVertex("A", "A", true)
 	g.AddVertex("B", "B", true)
 	g.AddVertex("C", "C", true)
@@ -111,7 +111,7 @@ func TestGraphCycleDetection(t *testing.T) {
 }
 
 func TestGraphLosangleCycle(t *testing.T) {
-	g := NewSoAGraph()
+	g := NewSoAGraph(nil)
 
 	g.AddVertex("A", "A", true)
 	g.AddVertex("B", "B", true)
@@ -139,7 +139,7 @@ func TestGraphLosangleCycle(t *testing.T) {
 }
 
 func TestGraphFind(t *testing.T) {
-	g := NewSoAGraph()
+	g := NewSoAGraph(nil)
 
 	g.AddVertex("A", "A", true)
 
@@ -174,7 +174,7 @@ func TestGraphFind(t *testing.T) {
 }
 
 func TestGraphStats(t *testing.T) {
-	g := NewSoAGraph()
+	g := NewSoAGraph(nil)
 
 	g.AddVertex("A", "A", true)
 	g.AddVertex("B", "B", true)
@@ -200,7 +200,7 @@ func TestGraphStats(t *testing.T) {
 }
 
 func TestSetVertexHealth(t *testing.T) {
-	g := NewSoAGraph()
+	g := NewSoAGraph(nil)
 
 	g.AddVertex("A", "A", true)
 	g.AddVertex("B", "B", true)
@@ -224,7 +224,7 @@ func TestSetVertexHealth(t *testing.T) {
 }
 
 func TestSetVertexHealth_NotFound(t *testing.T) {
-	g := NewSoAGraph()
+	g := NewSoAGraph(nil)
 
 	err := g.SetVertexHealth("A", false)
 	if err == nil {
@@ -243,7 +243,7 @@ func TestSetVertexHealth_NotFound(t *testing.T) {
 }
 
 func TestGraphClearHealthyStatus(t *testing.T) {
-	g := NewSoAGraph()
+	g := NewSoAGraph(nil)
 
 	g.AddVertex("A", "A", false)
 	g.AddVertex("B", "B", false)
@@ -269,7 +269,7 @@ func TestStartHealthCheckLoop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	g := NewSoAGraph()
+	g := NewSoAGraph(nil)
 
 	// injeta controle de tempo
 	now := int64(0)
@@ -303,7 +303,7 @@ func TestStartHealthCheckLoop(t *testing.T) {
 }
 
 func TestVertexBecomesUnhealthyAfterTimeout(t *testing.T) {
-	g := NewSoAGraph()
+	g := NewSoAGraph(nil)
 	g.nowFn = func() int64 { return 0 }
 
 	g.AddVertex("A", "A", true)
@@ -326,7 +326,7 @@ func TestVertexBecomesUnhealthyAfterTimeout(t *testing.T) {
 }
 
 func TestVertexNotFoundErr(t *testing.T) {
-	g := NewSoAGraph()
+	g := NewSoAGraph(nil)
 
 	_, err := g.Find("A")
 	if err == nil {
@@ -346,7 +346,7 @@ func TestVertexNotFoundErr(t *testing.T) {
 }
 
 func TestBidirectionalEdgeErr(t *testing.T) {
-	g := NewSoAGraph()
+	g := NewSoAGraph(nil)
 
 	g.AddVertex("A", "A", true)
 	g.AddVertex("B", "B", true)
@@ -369,7 +369,7 @@ func TestBidirectionalEdgeErr(t *testing.T) {
 	}
 }
 func TestVertexCycleErr(t *testing.T) {
-	g := NewSoAGraph()
+	g := NewSoAGraph(nil)
 
 	g.AddVertex("A", "A", true)
 	g.AddVertex("B", "B", true)

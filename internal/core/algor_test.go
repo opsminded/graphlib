@@ -9,6 +9,7 @@ import (
 )
 
 func TestVertexNeighbors(t *testing.T) {
+
 	g := buildGraph()
 
 	sg, err := g.VertexNeighbors("C")
@@ -141,7 +142,7 @@ func TestVertexDependencies_NotFound(t *testing.T) {
 }
 
 func TestPath(t *testing.T) {
-	g := core.NewSoAGraph()
+	g := core.NewSoAGraph(nil)
 
 	for _, k := range []string{"A", "B", "C", "D"} {
 		g.AddVertex(k, k, true)
@@ -186,7 +187,7 @@ func TestPath(t *testing.T) {
 }
 
 func TestPath_VertexPathErr(t *testing.T) {
-	g := core.NewSoAGraph()
+	g := core.NewSoAGraph(nil)
 
 	for _, k := range []string{"A", "B", "C"} {
 		g.AddVertex(k, k, true)
@@ -202,7 +203,7 @@ func TestPath_VertexPathErr(t *testing.T) {
 }
 
 func TestPath_NotFound(t *testing.T) {
-	g := core.NewSoAGraph()
+	g := core.NewSoAGraph(nil)
 
 	for _, k := range []string{"A", "B", "C"} {
 		g.AddVertex(k, k, true)
@@ -260,7 +261,7 @@ func setEdges(es []core.Edge) map[e]bool {
 		}
 */
 func buildGraph() *core.Graph {
-	g := core.NewSoAGraph()
+	g := core.NewSoAGraph(nil)
 	for _, k := range []string{"A", "B", "C", "D", "E", "F"} {
 		g.AddVertex(k, "", true)
 	}
