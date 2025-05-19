@@ -1,4 +1,4 @@
-package core
+package graphlib
 
 type Vertex struct {
 	Key       string

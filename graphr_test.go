@@ -1,4 +1,4 @@
-package core
+package graphlib
 
 import (
 	"context"
@@ -19,7 +19,7 @@ func TestGraphBasics(t *testing.T) {
 		t.Fatalf("Expected no error, but got %v", err)
 	}
 
-	v, err := g.Find("A")
+	v, err := g.GetVertex("A")
 	if err != nil {
 		t.Fatalf("Expected to find vertex A, but got error %v", err)
 	}
@@ -44,7 +44,7 @@ func TestGraphAddVertex(t *testing.T) {
 		t.Fatalf("Expected to find vertex A, but got different vertices")
 	}
 
-	a3, err := g.Find("B")
+	a3, err := g.GetVertex("B")
 	if err == nil {
 		t.Fatalf("Expected error for non-existent vertex B, but got %v", a3)
 	}
@@ -143,17 +143,17 @@ func TestGraphFind(t *testing.T) {
 
 	g.AddVertex("A", "A", true)
 
-	_, err := g.Find("A")
+	_, err := g.GetVertex("A")
 	if err != nil {
 		t.Fatalf("Expected no error, but got %v", err)
 	}
 
-	_, err = g.Find("B")
+	_, err = g.GetVertex("B")
 	if err == nil {
 		t.Fatal("Expected error for non-existent vertex B, but got none")
 	}
 
-	v1, err := g.Find("A")
+	v1, err := g.GetVertex("A")
 	if err != nil {
 		t.Fatalf("Expected no error, but got %v", err)
 	}
@@ -167,7 +167,7 @@ func TestGraphFind(t *testing.T) {
 		t.Fatalf("Expected health true, but got %v", v1.Healthy)
 	}
 
-	_, err = g.Find("B")
+	_, err = g.GetVertex("B")
 	if err == nil {
 		t.Fatal("Expected error for non-existent vertex B, but got none")
 	}
@@ -205,8 +205,8 @@ func TestSetVertexHealth(t *testing.T) {
 	g.AddVertex("A", "A", true)
 	g.AddVertex("B", "B", true)
 
-	v1, _ := g.Find("A")
-	v2, _ := g.Find("B")
+	v1, _ := g.GetVertex("A")
+	v2, _ := g.GetVertex("B")
 
 	if (!v1.Healthy) || (!v2.Healthy) {
 		t.Fatal("Expected vertices to be healthy, but got unhealthy")
@@ -215,8 +215,8 @@ func TestSetVertexHealth(t *testing.T) {
 	g.SetVertexHealth("A", false)
 	g.SetVertexHealth("B", false)
 
-	v1, _ = g.Find("A")
-	v2, _ = g.Find("B")
+	v1, _ = g.GetVertex("A")
+	v2, _ = g.GetVertex("B")
 
 	if v1.Healthy || v2.Healthy {
 		t.Fatal("Expected vertices to be unhealthy, but got healthy")
@@ -248,8 +248,8 @@ func TestGraphClearHealthyStatus(t *testing.T) {
 	g.AddVertex("A", "A", false)
 	g.AddVertex("B", "B", false)
 
-	v1, _ := g.Find("A")
-	v2, _ := g.Find("B")
+	v1, _ := g.GetVertex("A")
+	v2, _ := g.GetVertex("B")
 
 	if v1.Healthy || v2.Healthy {
 		t.Fatal("Expected vertices to be unhealthy, but got healthy")
@@ -257,8 +257,8 @@ func TestGraphClearHealthyStatus(t *testing.T) {
 
 	g.ClearHealthyStatus()
 
-	v1, _ = g.Find("A")
-	v2, _ = g.Find("B")
+	v1, _ = g.GetVertex("A")
+	v2, _ = g.GetVertex("B")
 
 	if (!v1.Healthy) || (!v2.Healthy) {
 		t.Fatal("Expected vertices to be healthy, but got healthy")
@@ -293,7 +293,7 @@ func TestStartHealthCheckLoop(t *testing.T) {
 	// Espera a propagação ocorrer
 	time.Sleep(50 * time.Millisecond)
 
-	vertexB, _ := g.Find("B")
+	vertexB, _ := g.GetVertex("B")
 	if vertexB.Healthy {
 		t.Errorf("expected vertex B to become unhealthy due to A")
 	}
@@ -314,11 +314,11 @@ func TestVertexBecomesUnhealthyAfterTimeout(t *testing.T) {
 
 	g.updateHealthStatusAndPropagate(1 * time.Second)
 
-	v, _ := g.Find("A")
+	v, _ := g.GetVertex("A")
 	if v.Healthy {
 		t.Fatal("Expected vertex A to be unhealthy, but got healthy")
 	}
-	v, _ = g.Find("B")
+	v, _ = g.GetVertex("B")
 	if v.Healthy {
 		t.Fatal("Expected vertex B to be unhealthy, but got healthy")
 	}
@@ -328,7 +328,7 @@ func TestVertexBecomesUnhealthyAfterTimeout(t *testing.T) {
 func TestVertexNotFoundErr(t *testing.T) {
 	g := NewSoAGraph(nil)
 
-	_, err := g.Find("A")
+	_, err := g.GetVertex("A")
 	if err == nil {
 		t.Fatal("Expected error for non-existent vertex A, but got none")
 	}

@@ -1,11 +1,11 @@
-package core_test
+package graphlib_test
 
 import (
 	"errors"
 	"fmt"
 	"testing"
 
-	"github.com/opsminded/graphlib/v2/internal/core"
+	"github.com/opsminded/graphlib/v2"
 )
 
 func TestVertexNeighbors(t *testing.T) {
@@ -31,7 +31,7 @@ func TestVertexNeighbors_NotFound(t *testing.T) {
 	g := buildGraph()
 
 	_, err := g.VertexNeighbors("X")
-	var nf core.VertexNotFoundErr
+	var nf graphlib.VertexNotFoundErr
 	if !errors.As(err, &nf) || nf.Key != "X" {
 		t.Fatalf("expected VertexNotFoundErr(X), got %v", err)
 	}
@@ -82,7 +82,7 @@ func TestVertexDependents_NotFound(t *testing.T) {
 	g := buildGraph()
 
 	_, err := g.VertexDependents("X", false)
-	var nf core.VertexNotFoundErr
+	var nf graphlib.VertexNotFoundErr
 	if !errors.As(err, &nf) || nf.Key != "X" {
 		t.Fatalf("expected VertexNotFoundErr(X), got %v", err)
 	}
@@ -134,7 +134,7 @@ func TestVertexDependencies_NotFound(t *testing.T) {
 	g := buildGraph()
 
 	_, err := g.VertexDependencies("X", false)
-	var nf core.VertexNotFoundErr
+	var nf graphlib.VertexNotFoundErr
 	if !errors.As(err, &nf) || nf.Key != "X" {
 		t.Fatalf("expected VertexNotFoundErr(X), got %v", err)
 	}
@@ -142,7 +142,7 @@ func TestVertexDependencies_NotFound(t *testing.T) {
 }
 
 func TestPath(t *testing.T) {
-	g := core.NewSoAGraph(nil)
+	g := graphlib.NewSoAGraph(nil)
 
 	for _, k := range []string{"A", "B", "C", "D"} {
 		g.AddVertex(k, k, true)
@@ -187,7 +187,7 @@ func TestPath(t *testing.T) {
 }
 
 func TestPath_VertexPathErr(t *testing.T) {
-	g := core.NewSoAGraph(nil)
+	g := graphlib.NewSoAGraph(nil)
 
 	for _, k := range []string{"A", "B", "C"} {
 		g.AddVertex(k, k, true)
@@ -196,14 +196,14 @@ func TestPath_VertexPathErr(t *testing.T) {
 	g.AddEdge("B", "C")
 
 	_, err := g.Path("A", "B")
-	var pe core.VertexPathErr
+	var pe graphlib.VertexPathErr
 	if !errors.As(err, &pe) {
 		t.Fatalf("expected VertexPathErr, got %v", err)
 	}
 }
 
 func TestPath_NotFound(t *testing.T) {
-	g := core.NewSoAGraph(nil)
+	g := graphlib.NewSoAGraph(nil)
 
 	for _, k := range []string{"A", "B", "C"} {
 		g.AddVertex(k, k, true)
@@ -212,7 +212,7 @@ func TestPath_NotFound(t *testing.T) {
 	g.AddEdge("B", "C")
 
 	_, err := g.Path("A", "X")
-	var nf core.VertexNotFoundErr
+	var nf graphlib.VertexNotFoundErr
 	if !errors.As(err, &nf) || nf.Key != "X" {
 		t.Fatalf("expected VertexNotFoundErr(X), got %v", err)
 	}
@@ -226,7 +226,7 @@ func TestPath_NotFound(t *testing.T) {
 /*** helpers ***************************************************************/
 
 // transforma slice de vértices / arestas em conjunto para comparação
-func setVerts(vs []core.Vertex) map[string]bool {
+func setVerts(vs []graphlib.Vertex) map[string]bool {
 	m := make(map[string]bool, len(vs))
 	for _, v := range vs {
 		m[v.Key] = true
@@ -236,7 +236,7 @@ func setVerts(vs []core.Vertex) map[string]bool {
 
 type e struct{ src, dst string }
 
-func setEdges(es []core.Edge) map[e]bool {
+func setEdges(es []graphlib.Edge) map[e]bool {
 	m := make(map[e]bool, len(es))
 	for _, ed := range es {
 		m[e{ed.Source, ed.Target}] = true
@@ -260,8 +260,8 @@ func setEdges(es []core.Edge) map[e]bool {
 		    F -> D;
 		}
 */
-func buildGraph() *core.Graph {
-	g := core.NewSoAGraph(nil)
+func buildGraph() *graphlib.Graph {
+	g := graphlib.NewSoAGraph(nil)
 	for _, k := range []string{"A", "B", "C", "D", "E", "F"} {
 		g.AddVertex(k, "", true)
 	}
