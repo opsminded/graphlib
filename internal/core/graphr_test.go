@@ -183,7 +183,7 @@ func TestGraphStats(t *testing.T) {
 	g.AddEdge("A", "B")
 	g.AddEdge("B", "C")
 
-	stats := g.GraphStats()
+	stats := g.Stats()
 
 	if stats.TotalVertices != 3 {
 		t.Fatalf("Expected 3 vertices, but got %d", stats.TotalVertices)
@@ -282,7 +282,7 @@ func TestStartHealthCheckLoop(t *testing.T) {
 
 	// Marca A como unhealthy e o tempo como antigo
 	g.healthy[g.lookup["A"]] = false
-	g.LastCheck[g.lookup["A"]] = 0
+	g.lastCheck[g.lookup["A"]] = 0
 
 	// Aumenta o tempo para expirar
 	now = int64(time.Second.Nanoseconds()) * 11

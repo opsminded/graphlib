@@ -2,49 +2,23 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
+	"sync"
 	"time"
 )
-
-type Vertex struct {
-	Key       string
-	Label     string
-	Healthy   bool
-	LastCheck int64
-}
-
-type Edge struct {
-	Key    string
-	Source string
-	Target string
-}
-
-type Subgraph struct {
-	Vertices []Vertex
-	Edges    []Edge
-}
-
-type Stats struct {
-	TotalVertices          int
-	TotalUnhealthyVertices int
-	TotalEdges             int
-	TotalHealthyVertices   int
-
-	UnhealthyVertices []Vertex
-}
 
 type Graph struct {
 	labels       []string
 	healthy      []bool
-	LastCheck    []int64
+	lastCheck    []int64
 	keys         map[int]string
 	lookup       map[string]int
 	dependents   map[int]map[int]struct{}
 	dependencies map[int]map[int]struct{}
 	nowFn        func() int64
 	logger       *slog.Logger
+	mu           sync.RWMutex
 }
 
 func NewSoAGraph(logger *slog.Logger) *Graph {
@@ -55,19 +29,23 @@ func NewSoAGraph(logger *slog.Logger) *Graph {
 	g := &Graph{
 		labels:       make([]string, 0, 1000),
 		healthy:      make([]bool, 0, 1000),
-		LastCheck:    make([]int64, 0, 1000),
+		lastCheck:    make([]int64, 0, 1000),
 		keys:         make(map[int]string, 1000),
 		lookup:       make(map[string]int, 1000),
 		dependents:   make(map[int]map[int]struct{}, 1000),
 		dependencies: make(map[int]map[int]struct{}, 1000),
 		nowFn:        func() int64 { return time.Now().UnixNano() },
 		logger:       logger,
+		mu:           sync.RWMutex{},
 	}
 
 	return g
 }
 
 func (g *Graph) AddVertex(key string, label string, healthy bool) int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	g.logger.Debug("core.Graph.AddVertex", slog.String("key", key), slog.String("label", label), slog.Bool("healthy", healthy))
 
 	if k, ok := g.lookup[key]; ok {
@@ -83,12 +61,15 @@ func (g *Graph) AddVertex(key string, label string, healthy bool) int {
 
 	g.labels = append(g.labels, label)
 	g.healthy = append(g.healthy, healthy)
-	g.LastCheck = append(g.LastCheck, g.nowFn())
+	g.lastCheck = append(g.lastCheck, g.nowFn())
 
 	return idx
 }
 
 func (g *Graph) AddEdge(src, tgt string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	g.logger.Debug("core.Graph.AddEdge", slog.String("src", src), slog.String("tgt", tgt))
 
 	ksrc, ok := g.lookup[src]
@@ -144,6 +125,9 @@ func (g *Graph) AddEdge(src, tgt string) error {
 }
 
 func (g *Graph) Find(key string) (Vertex, error) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
 	g.logger.Debug("core.Graph.Find", slog.String("key", key))
 
 	v, ok := g.lookup[key]
@@ -157,11 +141,14 @@ func (g *Graph) Find(key string) (Vertex, error) {
 		Key:       key,
 		Label:     g.labels[v],
 		Healthy:   g.healthy[v],
-		LastCheck: g.LastCheck[v],
+		LastCheck: g.lastCheck[v],
 	}, nil
 }
 
-func (g *Graph) GraphStats() Stats {
+func (g *Graph) Stats() Stats {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
 	g.logger.Debug("core.Graph.GraphStats")
 
 	stats := Stats{
@@ -190,7 +177,7 @@ func (g *Graph) GraphStats() Stats {
 				Key:       g.keys[i],
 				Label:     g.labels[i],
 				Healthy:   g.healthy[i],
-				LastCheck: g.LastCheck[i],
+				LastCheck: g.lastCheck[i],
 			})
 		}
 	}
@@ -205,6 +192,9 @@ func (g *Graph) GraphStats() Stats {
 }
 
 func (g *Graph) SetVertexHealth(key string, health bool) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	g.logger.Debug("core.Graph.SetVertexHealth", slog.String("key", key), slog.Bool("health", health))
 
 	v, ok := g.lookup[key]
@@ -217,12 +207,15 @@ func (g *Graph) SetVertexHealth(key string, health bool) error {
 	g.logger.Info("core.Graph.SetVertexHealth lookup success. The health status will be changed", slog.String("key", key), slog.Int("id", v), slog.Bool("health", health))
 
 	g.healthy[v] = health
-	g.LastCheck[v] = g.nowFn()
+	g.lastCheck[v] = g.nowFn()
 
 	return nil
 }
 
 func (g *Graph) ClearHealthyStatus() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	g.logger.Debug("core.Graph.ClearHealthyStatus")
 	for k := range g.healthy {
 		g.healthy[k] = true
@@ -255,14 +248,14 @@ func (g *Graph) updateHealthStatusAndPropagate(checkInterval time.Duration) {
 	now := g.nowFn()
 
 	for i, ok := range g.healthy {
-		lastCheck := g.LastCheck[i]
+		lastCheck := g.lastCheck[i]
 		duration := checkInterval.Nanoseconds()
 		min := lastCheck + duration
 
 		if ok && min < now {
 			g.logger.Info("core.Graph.updateHealthStatusAndPropagate will change vertex health to false", slog.Int("id", i), slog.String("key", g.keys[i]))
 			g.healthy[i] = false
-			g.LastCheck[i] = g.nowFn()
+			g.lastCheck[i] = g.nowFn()
 		}
 	}
 
@@ -281,7 +274,7 @@ func (g *Graph) propagateUnhealthy(v int, visited map[int]struct{}) {
 	}
 	visited[v] = struct{}{}
 	g.healthy[v] = false
-	g.LastCheck[v] = g.nowFn()
+	g.lastCheck[v] = g.nowFn()
 
 	for d := range g.dependents[v] {
 		g.propagateUnhealthy(d, visited)
@@ -327,38 +320,4 @@ func (g *Graph) wouldCreateCycle(src, tgt int) bool {
 	}
 
 	return false
-}
-
-type VertexNotFoundErr struct {
-	Key string
-}
-
-func (e VertexNotFoundErr) Error() string {
-	return fmt.Sprintf("vertex %q not found", e.Key)
-}
-
-type BidirectionalEdgeErr struct {
-	Src, Tgt string
-}
-
-func (e BidirectionalEdgeErr) Error() string {
-	return fmt.Sprintf("bidirectional edge %s ↔ %s not allowed", e.Src, e.Tgt)
-}
-
-type CycleErr struct {
-	Src string
-	Tgt string
-}
-
-func (e CycleErr) Error() string {
-	return fmt.Sprintf("edge %s → %s would create a cycle", e.Src, e.Tgt)
-}
-
-type VertexPathErr struct {
-	Src string
-	Dst string
-}
-
-func (e VertexPathErr) Error() string {
-	return fmt.Sprintf("no path from %s to %s", e.Src, e.Dst)
 }

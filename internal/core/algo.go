@@ -5,6 +5,9 @@ import (
 )
 
 func (g *Graph) VertexNeighbors(key string) (Subgraph, error) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
 	// lookup
 	rootID, ok := g.lookup[key]
 	if !ok {
@@ -39,7 +42,7 @@ func (g *Graph) VertexNeighbors(key string) (Subgraph, error) {
 			Key:       g.keys[id],
 			Label:     g.labels[id],
 			Healthy:   g.healthy[id],
-			LastCheck: g.LastCheck[id],
+			LastCheck: g.lastCheck[id],
 		})
 	}
 
@@ -56,6 +59,9 @@ func (g *Graph) VertexNeighbors(key string) (Subgraph, error) {
 }
 
 func (g *Graph) VertexDependencies(key string, all bool) (Subgraph, error) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
 	// lookup
 	rootID, ok := g.lookup[key]
 	if !ok {
@@ -111,7 +117,7 @@ func (g *Graph) VertexDependencies(key string, all bool) (Subgraph, error) {
 			Key:       g.keys[id],
 			Label:     g.labels[id],
 			Healthy:   g.healthy[id],
-			LastCheck: g.LastCheck[id],
+			LastCheck: g.lastCheck[id],
 		})
 	}
 
@@ -128,6 +134,9 @@ func (g *Graph) VertexDependencies(key string, all bool) (Subgraph, error) {
 }
 
 func (g *Graph) VertexDependents(key string, all bool) (Subgraph, error) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
 	// lookup
 	rootID, ok := g.lookup[key]
 	if !ok {
@@ -183,7 +192,7 @@ func (g *Graph) VertexDependents(key string, all bool) (Subgraph, error) {
 			Key:       g.keys[id],
 			Label:     g.labels[id],
 			Healthy:   g.healthy[id],
-			LastCheck: g.LastCheck[id],
+			LastCheck: g.lastCheck[id],
 		})
 	}
 
@@ -200,6 +209,9 @@ func (g *Graph) VertexDependents(key string, all bool) (Subgraph, error) {
 }
 
 func (g *Graph) Path(srcKey, tgtKey string) (Subgraph, error) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
 	// lookup
 	srcID, ok := g.lookup[srcKey]
 	if !ok {
@@ -254,7 +266,7 @@ func (g *Graph) Path(srcKey, tgtKey string) (Subgraph, error) {
 			Key:       g.keys[id],
 			Label:     g.labels[id],
 			Healthy:   g.healthy[id],
-			LastCheck: g.LastCheck[id],
+			LastCheck: g.lastCheck[id],
 		})
 	}
 	outE := make([]Edge, 0, len(edges))

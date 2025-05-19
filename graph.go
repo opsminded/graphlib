@@ -2,50 +2,47 @@ package graphlib
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/opsminded/graphlib/v2/internal/core"
 )
 
-type Edge = core.Edge
-type Vertex = core.Vertex
-type Subgraph = core.Subgraph
-type Stats = core.Stats
+type (
+	Edge     = core.Edge
+	Vertex   = core.Vertex
+	Subgraph = core.Subgraph
+	Stats    = core.Stats
+)
 
 type Graph struct {
 	graph *core.Graph
-	mu    sync.RWMutex
 }
 
 func NewGraph() *Graph {
 	g := &Graph{
 		graph: core.NewSoAGraph(nil),
-		mu:    sync.RWMutex{},
 	}
 	return g
 }
 
-func (g *Graph) NewVertex(key, label string, healthy bool) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
+func (g *Graph) AddVertex(key, label string, healthy bool) {
 	g.graph.AddVertex(key, label, healthy)
 }
 
-func (g *Graph) NewEdge(src, tgt string) error {
-	g.mu.Lock()
-	defer g.mu.Unlock()
+func (g *Graph) AddEdge(src, tgt string) error {
 	return g.graph.AddEdge(src, tgt)
 }
 
 func (g *Graph) GetVertex(key string) (Vertex, error) {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
-	v, err := g.graph.Find(key)
-	if err != nil {
-		return Vertex{}, err
-	}
-	return v, nil
+	return g.graph.Find(key)
+}
+
+func (g *Graph) SetVertexHealth(key string, health bool) error {
+	return g.graph.SetVertexHealth(key, health)
+}
+
+func (g *Graph) ClearGraphHealthyStatus() {
+	g.graph.ClearHealthyStatus()
 }
 
 func (g *Graph) StartHealthCheckLoop(ctx context.Context, check time.Duration) {
@@ -53,43 +50,21 @@ func (g *Graph) StartHealthCheckLoop(ctx context.Context, check time.Duration) {
 }
 
 func (g *Graph) GraphStats() Stats {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
-	return g.graph.GraphStats()
-}
-
-func (g *Graph) SetVertexHealth(key string, health bool) error {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	return g.graph.SetVertexHealth(key, health)
-}
-
-func (g *Graph) ClearGraphHealthyStatus() {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	g.graph.ClearHealthyStatus()
+	return g.graph.Stats()
 }
 
 func (g *Graph) VertexDependents(key string, all bool) (Subgraph, error) {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
 	return g.graph.VertexDependents(key, all)
 }
 
 func (g *Graph) VertexDependencies(key string, all bool) (Subgraph, error) {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
 	return g.graph.VertexDependencies(key, all)
 }
 
 func (g *Graph) Path(src, tgt string) (Subgraph, error) {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
 	return g.graph.Path(src, tgt)
 }
 
 func (g *Graph) VertexNeighbors(key string) (Subgraph, error) {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
 	return g.graph.VertexNeighbors(key)
 }
