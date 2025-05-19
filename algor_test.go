@@ -145,7 +145,7 @@ func TestPath(t *testing.T) {
 	g := graphlib.NewSoAGraph(nil)
 
 	for _, k := range []string{"A", "B", "C", "D"} {
-		g.AddVertex(k, k, true)
+		g.AddVertex(k, k, "server", true)
 	}
 	g.AddEdge("A", "B")
 	g.AddEdge("B", "C")
@@ -190,7 +190,7 @@ func TestPath_VertexPathErr(t *testing.T) {
 	g := graphlib.NewSoAGraph(nil)
 
 	for _, k := range []string{"A", "B", "C"} {
-		g.AddVertex(k, k, true)
+		g.AddVertex(k, k, "server", true)
 	}
 	g.AddEdge("A", "C")
 	g.AddEdge("B", "C")
@@ -206,7 +206,7 @@ func TestPath_NotFound(t *testing.T) {
 	g := graphlib.NewSoAGraph(nil)
 
 	for _, k := range []string{"A", "B", "C"} {
-		g.AddVertex(k, k, true)
+		g.AddVertex(k, k, "server", true)
 	}
 	g.AddEdge("A", "C")
 	g.AddEdge("B", "C")
@@ -263,7 +263,7 @@ func setEdges(es []graphlib.Edge) map[e]bool {
 func buildGraph() *graphlib.Graph {
 	g := graphlib.NewSoAGraph(nil)
 	for _, k := range []string{"A", "B", "C", "D", "E", "F"} {
-		g.AddVertex(k, "", true)
+		g.AddVertex(k, "", "server", true)
 	}
 	g.AddEdge("A", "B")
 	g.AddEdge("A", "C")

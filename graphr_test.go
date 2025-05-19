@@ -11,8 +11,8 @@ import (
 func TestGraphBasics(t *testing.T) {
 	g := NewSoAGraph(nil)
 
-	g.AddVertex("A", "A", true)
-	g.AddVertex("B", "B", true)
+	g.AddVertex("A", "A", "server", true)
+	g.AddVertex("B", "B", "server", true)
 
 	err := g.AddEdge("A", "B")
 	if err != nil {
@@ -34,11 +34,38 @@ func TestGraphBasics(t *testing.T) {
 	}
 }
 
+func TestVertexClasses(t *testing.T) {
+	g := NewSoAGraph(nil)
+
+	g.AddVertex("A", "A", "server", true)
+	g.AddVertex("B", "B", "server", true)
+	g.AddVertex("C", "C", "client", true)
+
+	a, _ := g.GetVertex("A")
+	b, _ := g.GetVertex("B")
+	c, _ := g.GetVertex("C")
+
+	fmt.Println(a, b, c)
+
+	if a.Class != "server" {
+		t.Fatalf("Expected class 'server' for vertex A, but got '%s'", a.Class)
+	}
+	if b.Class != "server" {
+		t.Fatalf("Expected class 'server' for vertex B, but got '%s'", b.Class)
+	}
+	if c.Class != "client" {
+		t.Fatalf("Expected class 'client' for vertex C, but got '%s'", c.Class)
+	}
+}
+
 func TestGraphAddVertex(t *testing.T) {
 	g := NewSoAGraph(nil)
 
-	a1 := g.AddVertex("A", "A", true)
-	a2 := g.AddVertex("A", "A", true)
+	g.AddVertex("A", "A", "server", true)
+	g.AddVertex("A", "A", "server", true)
+
+	a1, _ := g.GetVertex("A")
+	a2, _ := g.GetVertex("A")
 
 	if a1 != a2 {
 		t.Fatalf("Expected to find vertex A, but got different vertices")
@@ -53,8 +80,8 @@ func TestGraphAddVertex(t *testing.T) {
 func TestGraphAddEdge(t *testing.T) {
 	g := NewSoAGraph(nil)
 
-	g.AddVertex("A", "A", true)
-	g.AddVertex("B", "B", true)
+	g.AddVertex("A", "A", "server", true)
+	g.AddVertex("B", "B", "server", true)
 
 	err := g.AddEdge("A", "B")
 	if err != nil {
@@ -85,9 +112,9 @@ func TestGraphAddEdge(t *testing.T) {
 
 func TestGraphCycleDetection(t *testing.T) {
 	g := NewSoAGraph(nil)
-	g.AddVertex("A", "A", true)
-	g.AddVertex("B", "B", true)
-	g.AddVertex("C", "C", true)
+	g.AddVertex("A", "A", "server", true)
+	g.AddVertex("B", "B", "server", true)
+	g.AddVertex("C", "C", "server", true)
 
 	err := g.AddEdge("A", "B")
 	if err != nil {
@@ -113,13 +140,13 @@ func TestGraphCycleDetection(t *testing.T) {
 func TestGraphLosangleCycle(t *testing.T) {
 	g := NewSoAGraph(nil)
 
-	g.AddVertex("A", "A", true)
-	g.AddVertex("B", "B", true)
-	g.AddVertex("C", "C", true)
-	g.AddVertex("D", "D", true)
-	g.AddVertex("E", "E", true)
-	g.AddVertex("F", "F", true)
-	g.AddVertex("G", "G", true)
+	g.AddVertex("A", "A", "server", true)
+	g.AddVertex("B", "B", "server", true)
+	g.AddVertex("C", "C", "server", true)
+	g.AddVertex("D", "D", "server", true)
+	g.AddVertex("E", "E", "server", true)
+	g.AddVertex("F", "F", "server", true)
+	g.AddVertex("G", "G", "server", true)
 
 	g.AddEdge("B", "C")
 
@@ -141,7 +168,7 @@ func TestGraphLosangleCycle(t *testing.T) {
 func TestGraphFind(t *testing.T) {
 	g := NewSoAGraph(nil)
 
-	g.AddVertex("A", "A", true)
+	g.AddVertex("A", "A", "server", true)
 
 	_, err := g.GetVertex("A")
 	if err != nil {
@@ -176,9 +203,9 @@ func TestGraphFind(t *testing.T) {
 func TestGraphStats(t *testing.T) {
 	g := NewSoAGraph(nil)
 
-	g.AddVertex("A", "A", true)
-	g.AddVertex("B", "B", true)
-	g.AddVertex("C", "C", false)
+	g.AddVertex("A", "A", "server", true)
+	g.AddVertex("B", "B", "server", true)
+	g.AddVertex("C", "C", "server", false)
 
 	g.AddEdge("A", "B")
 	g.AddEdge("B", "C")
@@ -202,8 +229,8 @@ func TestGraphStats(t *testing.T) {
 func TestSetVertexHealth(t *testing.T) {
 	g := NewSoAGraph(nil)
 
-	g.AddVertex("A", "A", true)
-	g.AddVertex("B", "B", true)
+	g.AddVertex("A", "A", "server", true)
+	g.AddVertex("B", "B", "server", true)
 
 	v1, _ := g.GetVertex("A")
 	v2, _ := g.GetVertex("B")
@@ -245,8 +272,8 @@ func TestSetVertexHealth_NotFound(t *testing.T) {
 func TestGraphClearHealthyStatus(t *testing.T) {
 	g := NewSoAGraph(nil)
 
-	g.AddVertex("A", "A", false)
-	g.AddVertex("B", "B", false)
+	g.AddVertex("A", "A", "server", false)
+	g.AddVertex("B", "B", "server", false)
 
 	v1, _ := g.GetVertex("A")
 	v2, _ := g.GetVertex("B")
@@ -276,8 +303,8 @@ func TestStartHealthCheckLoop(t *testing.T) {
 	g.nowFn = func() int64 { return now }
 
 	// Cria grafo A → B
-	g.AddVertex("A", "App", true)
-	g.AddVertex("B", "DB", true)
+	g.AddVertex("A", "App", "server", true)
+	g.AddVertex("B", "DB", "server", true)
 	g.AddEdge("A", "B")
 
 	// Marca A como unhealthy e o tempo como antigo
@@ -306,8 +333,8 @@ func TestVertexBecomesUnhealthyAfterTimeout(t *testing.T) {
 	g := NewSoAGraph(nil)
 	g.nowFn = func() int64 { return 0 }
 
-	g.AddVertex("A", "A", true)
-	g.AddVertex("B", "B", true)
+	g.AddVertex("A", "A", "server", true)
+	g.AddVertex("B", "B", "server", true)
 	g.AddEdge("A", "B")
 
 	g.nowFn = func() int64 { return int64(2 * time.Second.Nanoseconds()) }
@@ -348,8 +375,8 @@ func TestVertexNotFoundErr(t *testing.T) {
 func TestBidirectionalEdgeErr(t *testing.T) {
 	g := NewSoAGraph(nil)
 
-	g.AddVertex("A", "A", true)
-	g.AddVertex("B", "B", true)
+	g.AddVertex("A", "A", "server", true)
+	g.AddVertex("B", "B", "server", true)
 
 	err := g.AddEdge("A", "B")
 	if err != nil {
@@ -371,9 +398,9 @@ func TestBidirectionalEdgeErr(t *testing.T) {
 func TestVertexCycleErr(t *testing.T) {
 	g := NewSoAGraph(nil)
 
-	g.AddVertex("A", "A", true)
-	g.AddVertex("B", "B", true)
-	g.AddVertex("C", "C", true)
+	g.AddVertex("A", "A", "server", true)
+	g.AddVertex("B", "B", "server", true)
+	g.AddVertex("C", "C", "server", true)
 	g.AddEdge("A", "B")
 	g.AddEdge("B", "C")
 

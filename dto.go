@@ -3,6 +3,7 @@ package graphlib
 type Vertex struct {
 	Key       string
 	Label     string
+	Class     string
 	Healthy   bool
 	LastCheck int64
 }
