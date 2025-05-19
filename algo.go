@@ -41,6 +41,7 @@ func (g *Graph) VertexNeighbors(key string) (Subgraph, error) {
 		vertices = append(vertices, Vertex{
 			Key:       g.keys[id],
 			Label:     g.labels[id],
+			Class:     g.classLookup[g.classes[id]],
 			Healthy:   g.healthy[id],
 			LastCheck: g.lastCheck[id],
 		})
@@ -116,6 +117,7 @@ func (g *Graph) VertexDependencies(key string, all bool) (Subgraph, error) {
 		vertices = append(vertices, Vertex{
 			Key:       g.keys[id],
 			Label:     g.labels[id],
+			Class:     g.classLookup[g.classes[id]],
 			Healthy:   g.healthy[id],
 			LastCheck: g.lastCheck[id],
 		})
@@ -191,6 +193,7 @@ func (g *Graph) VertexDependents(key string, all bool) (Subgraph, error) {
 		vertices = append(vertices, Vertex{
 			Key:       g.keys[id],
 			Label:     g.labels[id],
+			Class:     g.classLookup[g.classes[id]],
 			Healthy:   g.healthy[id],
 			LastCheck: g.lastCheck[id],
 		})
@@ -265,6 +268,7 @@ func (g *Graph) Path(srcKey, tgtKey string) (Subgraph, error) {
 		outV = append(outV, Vertex{
 			Key:       g.keys[id],
 			Label:     g.labels[id],
+			Class:     g.classLookup[g.classes[id]],
 			Healthy:   g.healthy[id],
 			LastCheck: g.lastCheck[id],
 		})
