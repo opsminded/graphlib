@@ -243,6 +243,9 @@ func (g *Graph) StartHealthCheckLoop(ctx context.Context, checkInterval time.Dur
 }
 
 func (g *Graph) updateHealthStatusAndPropagate(checkInterval time.Duration) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	g.logger.Debug("core.Graph.updateHealthStatusAndPropagate", slog.Duration("checkInterval", checkInterval))
 
 	now := g.nowFn()
