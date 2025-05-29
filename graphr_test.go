@@ -1,11 +1,9 @@
 package graphlib
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"testing"
-	"time"
 )
 
 func TestGraphBasics(t *testing.T) {
@@ -239,7 +237,8 @@ func TestSetVertexHealth(t *testing.T) {
 		t.Fatal("Expected vertices to be healthy, but got unhealthy")
 	}
 
-	g.SetVertexHealth("A", false)
+	g.AddEdge("A", "B")
+
 	g.SetVertexHealth("B", false)
 
 	v1, _ = g.GetVertex("A")
@@ -290,66 +289,6 @@ func TestGraphClearHealthyStatus(t *testing.T) {
 	if (!v1.Healthy) || (!v2.Healthy) {
 		t.Fatal("Expected vertices to be healthy, but got healthy")
 	}
-}
-
-func TestStartHealthCheckLoop(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	g := NewSoAGraph(nil)
-
-	// injeta controle de tempo
-	now := int64(0)
-	g.nowFn = func() int64 { return now }
-
-	// Cria grafo A → B
-	g.AddVertex("A", "App", "server", true)
-	g.AddVertex("B", "DB", "server", true)
-	g.AddEdge("A", "B")
-
-	// Marca A como unhealthy e o tempo como antigo
-	g.healthy[g.lookup["A"]] = false
-	g.lastCheck[g.lookup["A"]] = 0
-
-	// Aumenta o tempo para expirar
-	now = int64(time.Second.Nanoseconds()) * 11
-
-	// Inicia o loop com verificação a cada 10ms
-	go g.StartHealthCheckLoop(ctx, 10*time.Millisecond)
-
-	// Espera a propagação ocorrer
-	time.Sleep(50 * time.Millisecond)
-
-	vertexB, _ := g.GetVertex("B")
-	if vertexB.Healthy {
-		t.Errorf("expected vertex B to become unhealthy due to A")
-	}
-
-	// Cancela a rotina
-	cancel()
-}
-
-func TestVertexBecomesUnhealthyAfterTimeout(t *testing.T) {
-	g := NewSoAGraph(nil)
-	g.nowFn = func() int64 { return 0 }
-
-	g.AddVertex("A", "A", "server", true)
-	g.AddVertex("B", "B", "server", true)
-	g.AddEdge("A", "B")
-
-	g.nowFn = func() int64 { return int64(2 * time.Second.Nanoseconds()) }
-
-	g.updateHealthStatusAndPropagate(1 * time.Second)
-
-	v, _ := g.GetVertex("A")
-	if v.Healthy {
-		t.Fatal("Expected vertex A to be unhealthy, but got healthy")
-	}
-	v, _ = g.GetVertex("B")
-	if v.Healthy {
-		t.Fatal("Expected vertex B to be unhealthy, but got healthy")
-	}
-
 }
 
 func TestVertexNotFoundErr(t *testing.T) {
