@@ -4,6 +4,8 @@ import (
 	"fmt"
 )
 
+type edgeKey struct{ src, tgt int }
+
 func (g *Graph) VertexNeighbors(key string) (Subgraph, error) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -16,7 +18,6 @@ func (g *Graph) VertexNeighbors(key string) (Subgraph, error) {
 
 	// coletores
 	verticesSet := map[int]struct{}{rootID: {}}
-	type edgeKey struct{ src, dst int }
 	edgesSet := make(map[edgeKey]struct{}, 8)
 	addEdge := func(s, t int) { edgesSet[edgeKey{s, t}] = struct{}{} }
 
@@ -50,9 +51,9 @@ func (g *Graph) VertexNeighbors(key string) (Subgraph, error) {
 	edges := make([]Edge, 0, len(edgesSet))
 	for k := range edgesSet {
 		edges = append(edges, Edge{
-			Key:    fmt.Sprintf("%s-%s", g.keys[k.src], g.keys[k.dst]),
+			Key:    fmt.Sprintf("%s-%s", g.keys[k.src], g.keys[k.tgt]),
 			Source: g.keys[k.src],
-			Target: g.keys[k.dst],
+			Target: g.keys[k.tgt],
 		})
 	}
 
@@ -71,7 +72,6 @@ func (g *Graph) VertexDependencies(key string, all bool) (Subgraph, error) {
 
 	// coletores
 	verticesSet := map[int]struct{}{rootID: {}}
-	type edgeKey struct{ src, dst int }
 	edgesSet := make(map[edgeKey]struct{}, 8)
 	addEdge := func(s, t int) { edgesSet[edgeKey{s, t}] = struct{}{} }
 
@@ -126,9 +126,9 @@ func (g *Graph) VertexDependencies(key string, all bool) (Subgraph, error) {
 	edges := make([]Edge, 0, len(edgesSet))
 	for k := range edgesSet {
 		edges = append(edges, Edge{
-			Key:    fmt.Sprintf("%s-%s", g.keys[k.src], g.keys[k.dst]),
+			Key:    fmt.Sprintf("%s-%s", g.keys[k.src], g.keys[k.tgt]),
 			Source: g.keys[k.src],
-			Target: g.keys[k.dst],
+			Target: g.keys[k.tgt],
 		})
 	}
 
@@ -147,7 +147,6 @@ func (g *Graph) VertexDependents(key string, all bool) (Subgraph, error) {
 
 	// coletores
 	verticesSet := map[int]struct{}{rootID: {}}
-	type edgeKey struct{ src, dst int }
 	edgesSet := make(map[edgeKey]struct{}, 8)
 	addEdge := func(s, t int) { edgesSet[edgeKey{s, t}] = struct{}{} }
 
@@ -202,9 +201,9 @@ func (g *Graph) VertexDependents(key string, all bool) (Subgraph, error) {
 	edges := make([]Edge, 0, len(edgesSet))
 	for k := range edgesSet {
 		edges = append(edges, Edge{
-			Key:    fmt.Sprintf("%s-%s", g.keys[k.src], g.keys[k.dst]),
+			Key:    fmt.Sprintf("%s-%s", g.keys[k.src], g.keys[k.tgt]),
 			Source: g.keys[k.src],
-			Target: g.keys[k.dst],
+			Target: g.keys[k.tgt],
 		})
 	}
 
@@ -227,7 +226,6 @@ func (g *Graph) Path(srcKey, tgtKey string) (Subgraph, error) {
 
 	// coletores
 	verts := map[int]struct{}{}
-	type edgeKey struct{ s, t int }
 	edges := map[edgeKey]struct{}{}
 
 	// DFS + memo
@@ -276,9 +274,9 @@ func (g *Graph) Path(srcKey, tgtKey string) (Subgraph, error) {
 	outE := make([]Edge, 0, len(edges))
 	for k := range edges {
 		outE = append(outE, Edge{
-			Key:    fmt.Sprintf("%s-%s", g.keys[k.s], g.keys[k.t]),
-			Source: g.keys[k.s],
-			Target: g.keys[k.t],
+			Key:    fmt.Sprintf("%s-%s", g.keys[k.src], g.keys[k.tgt]),
+			Source: g.keys[k.src],
+			Target: g.keys[k.tgt],
 		})
 	}
 	return Subgraph{Vertices: outV, Edges: outE}, nil
