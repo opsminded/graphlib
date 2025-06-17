@@ -32,6 +32,80 @@ func TestGraphBasics(t *testing.T) {
 	}
 }
 
+func TestStats_EmptyGraph(t *testing.T) {
+	g := NewSoAGraph(nil)
+	stats := g.Stats()
+
+	if stats.TotalVertices != 0 {
+		t.Errorf("Expected TotalVertices to be 0, got %d", stats.TotalVertices)
+	}
+	if stats.TotalHealthyVertices != 0 {
+		t.Errorf("Expected TotalHealthyVertices to be 0, got %d", stats.TotalHealthyVertices)
+	}
+	if stats.TotalUnhealthyVertices != 0 {
+		t.Errorf("Expected TotalUnhealthyVertices to be 0, got %d", stats.TotalUnhealthyVertices)
+	}
+	if stats.TotalEdges != 0 {
+		t.Errorf("Expected TotalEdges to be 0, got %d", stats.TotalEdges)
+	}
+	if len(stats.UnhealthyVertices) != 0 {
+		t.Errorf("Expected UnhealthyVertices to be empty, got %v", stats.UnhealthyVertices)
+	}
+}
+
+func TestStats_NoEdges(t *testing.T) {
+	g := NewSoAGraph(nil)
+	g.AddVertex("A", "A", "server", true)
+	g.AddVertex("B", "B", "server", false)
+	stats := g.Stats()
+
+	if stats.TotalVertices != 2 {
+		t.Errorf("Expected TotalVertices to be 2, got %d", stats.TotalVertices)
+	}
+	if stats.TotalHealthyVertices != 1 {
+		t.Errorf("Expected TotalHealthyVertices to be 1, got %d", stats.TotalHealthyVertices)
+	}
+	if stats.TotalUnhealthyVertices != 1 {
+		t.Errorf("Expected TotalUnhealthyVertices to be 1, got %d", stats.TotalUnhealthyVertices)
+	}
+	if stats.TotalEdges != 0 {
+		t.Errorf("Expected TotalEdges to be 0, got %d", stats.TotalEdges)
+	}
+	if len(stats.UnhealthyVertices) != 1 || stats.UnhealthyVertices[0].Key != "B" {
+		t.Errorf("Expected UnhealthyVertices to contain B, got %v", stats.UnhealthyVertices)
+	}
+}
+
+func TestAddEdge_SourceNotFound_EmptyGraph(t *testing.T) {
+	g := NewSoAGraph(nil)
+	err := g.AddEdge("A", "B")
+	if err == nil {
+		t.Fatal("Expected error when adding edge with non-existent source on empty graph, but got nil")
+	}
+	var nf VertexNotFoundErr
+	if !errors.As(err, &nf) {
+		t.Fatalf("Expected error of type VertexNotFoundErr, but got %T", err)
+	}
+	if nf.Key != "A" {
+		t.Fatalf("Expected VertexNotFoundErr.Key to be \"A\", but got %q", nf.Key)
+	}
+}
+
+func TestGetVertex_EmptyGraph(t *testing.T) {
+	g := NewSoAGraph(nil)
+	_, err := g.GetVertex("A")
+	if err == nil {
+		t.Fatal("Expected error when getting vertex from empty graph, but got nil")
+	}
+	var nf VertexNotFoundErr
+	if !errors.As(err, &nf) {
+		t.Fatalf("Expected error of type VertexNotFoundErr, but got %T", err)
+	}
+	if nf.Key != "A" {
+		t.Fatalf("Expected VertexNotFoundErr.Key to be \"A\", but got %q", nf.Key)
+	}
+}
+
 func TestVertexClasses(t *testing.T) {
 	g := NewSoAGraph(nil)
 
@@ -353,5 +427,28 @@ func TestVertexCycleErr(t *testing.T) {
 	want := fmt.Sprintf("edge %s → %s would create a cycle", "C", "A")
 	if err.Error() != want {
 		t.Fatalf("expected cycle error message, got %v", err.Error())
+	}
+}
+
+func TestAddEdge_SelfLoop(t *testing.T) {
+	g := NewSoAGraph(nil)
+	g.AddVertex("A", "A", "server", true)
+
+	err := g.AddEdge("A", "A")
+	if err == nil {
+		t.Fatal("Expected error when adding self-loop, but got nil")
+	}
+
+	var cycleErr CycleErr
+	if !errors.As(err, &cycleErr) {
+		t.Fatalf("Expected error of type CycleErr, but got %T", err)
+	}
+
+	if cycleErr.Src != "A" {
+		t.Fatalf("Expected CycleErr.Src to be \"A\", but got %q", cycleErr.Src)
+	}
+
+	if cycleErr.Tgt != "A" {
+		t.Fatalf("Expected CycleErr.Tgt to be \"A\", but got %q", cycleErr.Tgt)
 	}
 }

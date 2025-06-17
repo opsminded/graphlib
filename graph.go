@@ -16,7 +16,8 @@ type Graph struct {
 	lookup       map[string]int
 	dependents   map[int]map[int]struct{}
 	dependencies map[int]map[int]struct{}
-	classLookup  map[int]string
+	classNameToID map[string]int
+	classIDToName map[int]string
 	nowFn        func() int64
 	logger       *slog.Logger
 	mu           sync.RWMutex
@@ -36,7 +37,8 @@ func NewSoAGraph(logger *slog.Logger) *Graph {
 		lookup:       make(map[string]int, 1000),
 		dependents:   make(map[int]map[int]struct{}, 1000),
 		dependencies: make(map[int]map[int]struct{}, 1000),
-		classLookup:  make(map[int]string, 1000),
+		classNameToID: make(map[string]int, 100),
+		classIDToName: make(map[int]string, 100),
 		nowFn:        func() int64 { return time.Now().UnixNano() },
 		logger:       logger,
 		mu:           sync.RWMutex{},
@@ -62,17 +64,15 @@ func (g *Graph) AddVertex(key string, label string, class string, healthy bool) 
 	g.keys[idx] = key
 	g.lookup[key] = idx
 
-	var cix = len(g.classLookup)
-
-	for i := range g.classLookup {
-		if g.classLookup[i] == class {
-			cix = i
-			g.logger.Debug("core.Graph.AddVertex class already exists", slog.String("key", key))
-			break
-		}
+	cix, ok := g.classNameToID[class]
+	if !ok {
+		cix = len(g.classIDToName)
+		g.classNameToID[class] = cix
+		g.classIDToName[cix] = class
+		g.logger.Debug("core.Graph.AddVertex new class created", slog.String("class", class), slog.Int("cix", cix))
+	} else {
+		g.logger.Debug("core.Graph.AddVertex class already exists", slog.String("class", class), slog.Int("cix", cix))
 	}
-
-	g.classLookup[cix] = class
 
 	g.labels = append(g.labels, label)
 	g.classes = append(g.classes, cix)
@@ -154,7 +154,7 @@ func (g *Graph) GetVertex(key string) (Vertex, error) {
 	return Vertex{
 		Key:       key,
 		Label:     g.labels[v],
-		Class:     g.classLookup[g.classes[v]],
+		Class:     g.classIDToName[g.classes[v]],
 		Healthy:   g.healthy[v],
 		LastCheck: g.lastCheck[v],
 	}, nil
@@ -191,7 +191,7 @@ func (g *Graph) Stats() Stats {
 			stats.UnhealthyVertices = append(stats.UnhealthyVertices, Vertex{
 				Key:       g.keys[i],
 				Label:     g.labels[i],
-				Class:     g.classLookup[g.classes[i]],
+				Class:     g.classIDToName[g.classes[i]],
 				Healthy:   g.healthy[i],
 				LastCheck: g.lastCheck[i],
 			})

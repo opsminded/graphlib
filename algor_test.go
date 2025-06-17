@@ -27,6 +27,109 @@ func TestVertexNeighbors(t *testing.T) {
 	}
 }
 
+func TestVertexNeighbors_IsolatedVertex(t *testing.T) {
+	g := graphlib.NewSoAGraph(nil)
+	g.AddVertex("A", "A", "server", true)
+	g.AddVertex("B", "B", "server", true) // Another vertex to ensure graph isn't empty
+
+	sg, err := g.VertexNeighbors("A")
+	if err != nil {
+		t.Fatalf("VertexNeighbors(\"A\") returned error: %v", err)
+	}
+
+	if len(sg.Vertices) != 1 {
+		t.Fatalf("VertexNeighbors(\"A\") expected 1 vertex, got %d", len(sg.Vertices))
+	}
+	if sg.Vertices[0].Key != "A" {
+		t.Fatalf("VertexNeighbors(\"A\") expected vertex A, got %s", sg.Vertices[0].Key)
+	}
+	if len(sg.Edges) != 0 {
+		t.Fatalf("VertexNeighbors(\"A\") expected 0 edges, got %d", len(sg.Edges))
+	}
+}
+
+func TestVertexNeighbors_OnEmptyGraph(t *testing.T) {
+	g := graphlib.NewSoAGraph(nil)
+	_, err := g.VertexNeighbors("A")
+	if err == nil {
+		t.Fatal("VertexNeighbors(\"A\") on empty graph expected error, got nil")
+	}
+	var nf graphlib.VertexNotFoundErr
+	if !errors.As(err, &nf) {
+		t.Fatalf("VertexNeighbors(\"A\") on empty graph expected VertexNotFoundErr, got %T", err)
+	}
+	if nf.Key != "A" {
+		t.Fatalf("VertexNeighbors(\"A\") on empty graph expected VertexNotFoundErr for key A, got %s", nf.Key)
+	}
+}
+
+func TestVertexDependents_IsolatedVertex(t *testing.T) {
+	g := graphlib.NewSoAGraph(nil)
+	g.AddVertex("A", "A", "server", true)
+	g.AddVertex("B", "B", "server", true)
+
+	// Test with all = true
+	sg, err := g.VertexDependents("A", true)
+	if err != nil {
+		t.Fatalf("VertexDependents(\"A\", true) returned error: %v", err)
+	}
+	if len(sg.Vertices) != 1 || sg.Vertices[0].Key != "A" {
+		t.Fatalf("VertexDependents(\"A\", true) expected subgraph with vertex A, got %v", sg.Vertices)
+	}
+	if len(sg.Edges) != 0 {
+		t.Fatalf("VertexDependents(\"A\", true) expected 0 edges, got %d", len(sg.Edges))
+	}
+
+	// Test with all = false
+	sg, err = g.VertexDependents("A", false)
+	if err != nil {
+		t.Fatalf("VertexDependents(\"A\", false) returned error: %v", err)
+	}
+	if len(sg.Vertices) != 1 || sg.Vertices[0].Key != "A" {
+		t.Fatalf("VertexDependents(\"A\", false) expected subgraph with vertex A, got %v", sg.Vertices)
+	}
+	if len(sg.Edges) != 0 {
+		t.Fatalf("VertexDependents(\"A\", false) expected 0 edges, got %d", len(sg.Edges))
+	}
+}
+
+func TestVertexDependents_OnEmptyGraph(t *testing.T) {
+	g := graphlib.NewSoAGraph(nil)
+	_, err := g.VertexDependents("A", false)
+	if err == nil {
+		t.Fatal("VertexDependents(\"A\", false) on empty graph expected error, got nil")
+	}
+	var nf graphlib.VertexNotFoundErr
+	if !errors.As(err, &nf) {
+		t.Fatalf("VertexDependents(\"A\", false) on empty graph expected VertexNotFoundErr, got %T", err)
+	}
+	if nf.Key != "A" {
+		t.Fatalf("VertexDependents(\"A\", false) on empty graph expected VertexNotFoundErr for key A, got %s", nf.Key)
+	}
+}
+
+func TestPath_Self(t *testing.T) {
+	g := graphlib.NewSoAGraph(nil)
+	g.AddVertex("A", "A", "server", true)
+
+	sg, err := g.Path("A", "A")
+	if err != nil {
+		t.Fatalf("g.Path(\"A\", \"A\") returned error: %v", err)
+	}
+
+	if len(sg.Vertices) != 1 {
+		t.Fatalf("g.Path(\"A\", \"A\") expected 1 vertex, got %d", len(sg.Vertices))
+	}
+
+	if sg.Vertices[0].Key != "A" {
+		t.Fatalf("g.Path(\"A\", \"A\") expected vertex with Key \"A\", got %s", sg.Vertices[0].Key)
+	}
+
+	if len(sg.Edges) != 0 {
+		t.Fatalf("g.Path(\"A\", \"A\") expected 0 edges, got %d", len(sg.Edges))
+	}
+}
+
 func TestVertexNeighbors_NotFound(t *testing.T) {
 	g := buildGraph()
 
@@ -141,6 +244,51 @@ func TestVertexDependencies_NotFound(t *testing.T) {
 
 }
 
+func TestVertexDependencies_IsolatedVertex(t *testing.T) {
+	g := graphlib.NewSoAGraph(nil)
+	g.AddVertex("A", "A", "server", true)
+	g.AddVertex("B", "B", "server", true)
+
+	// Test with all = true
+	sg, err := g.VertexDependencies("A", true)
+	if err != nil {
+		t.Fatalf("VertexDependencies(\"A\", true) returned error: %v", err)
+	}
+	if len(sg.Vertices) != 1 || sg.Vertices[0].Key != "A" {
+		t.Fatalf("VertexDependencies(\"A\", true) expected subgraph with vertex A, got %v", sg.Vertices)
+	}
+	if len(sg.Edges) != 0 {
+		t.Fatalf("VertexDependencies(\"A\", true) expected 0 edges, got %d", len(sg.Edges))
+	}
+
+	// Test with all = false
+	sg, err = g.VertexDependencies("A", false)
+	if err != nil {
+		t.Fatalf("VertexDependencies(\"A\", false) returned error: %v", err)
+	}
+	if len(sg.Vertices) != 1 || sg.Vertices[0].Key != "A" {
+		t.Fatalf("VertexDependencies(\"A\", false) expected subgraph with vertex A, got %v", sg.Vertices)
+	}
+	if len(sg.Edges) != 0 {
+		t.Fatalf("VertexDependencies(\"A\", false) expected 0 edges, got %d", len(sg.Edges))
+	}
+}
+
+func TestVertexDependencies_OnEmptyGraph(t *testing.T) {
+	g := graphlib.NewSoAGraph(nil)
+	_, err := g.VertexDependencies("A", false)
+	if err == nil {
+		t.Fatal("VertexDependencies(\"A\", false) on empty graph expected error, got nil")
+	}
+	var nf graphlib.VertexNotFoundErr
+	if !errors.As(err, &nf) {
+		t.Fatalf("VertexDependencies(\"A\", false) on empty graph expected VertexNotFoundErr, got %T", err)
+	}
+	if nf.Key != "A" {
+		t.Fatalf("VertexDependencies(\"A\", false) on empty graph expected VertexNotFoundErr for key A, got %s", nf.Key)
+	}
+}
+
 func TestPath(t *testing.T) {
 	g := graphlib.NewSoAGraph(nil)
 
@@ -183,6 +331,42 @@ func TestPath(t *testing.T) {
 
 	if len(wantE) != 0 {
 		t.Fatalf("missing edges: %v", wantE)
+	}
+}
+
+func TestPath_OnEmptyGraph(t *testing.T) {
+	g := graphlib.NewSoAGraph(nil)
+	_, err := g.Path("A", "B")
+	if err == nil {
+		t.Fatal("Path(\"A\", \"B\") on empty graph expected error, got nil")
+	}
+	var nf graphlib.VertexNotFoundErr
+	if !errors.As(err, &nf) {
+		t.Fatalf("Path(\"A\", \"B\") on empty graph expected VertexNotFoundErr, got %T", err)
+	}
+	if nf.Key != "A" { // Path checks source first
+		t.Fatalf("Path(\"A\", \"B\") on empty graph expected VertexNotFoundErr for key A, got %s", nf.Key)
+	}
+}
+
+func TestPath_Disconnected(t *testing.T) {
+	g := graphlib.NewSoAGraph(nil)
+	g.AddVertex("A", "A", "server", true)
+	g.AddVertex("B", "B", "server", true)
+	g.AddVertex("C", "C", "server", true)
+	g.AddVertex("D", "D", "server", true)
+	g.AddEdge("A", "B")
+
+	_, err := g.Path("A", "C")
+	if err == nil {
+		t.Fatal("Path(\"A\", \"C\") for disconnected vertices expected error, got nil")
+	}
+	var pe graphlib.VertexPathErr
+	if !errors.As(err, &pe) {
+		t.Fatalf("Path(\"A\", \"C\") for disconnected vertices expected VertexPathErr, got %T", err)
+	}
+	if pe.Src != "A" || pe.Dst != "C" {
+		t.Fatalf("Path(\"A\", \"C\") expected VertexPathErr for A to C, got Src=%s, Dst=%s", pe.Src, pe.Dst)
 	}
 }
 
